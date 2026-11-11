@@ -693,7 +693,16 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
   .mo{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin:8px 0;background:#fff;cursor:pointer}
   .mo.sel{border-color:var(--accent);background:#EEF4FB}
-  .mo input{width:auto;margin-top:3px;flex:none}
+  .mo input{display:none}
+  .mo.sel::after{content:"✓";margin-left:auto;color:var(--accent);font-weight:800;font-size:20px;line-height:1}
+  .st-card.doc-fpi{background:#E3ECF8;border:2px solid #1E5EA8;border-left-width:8px;margin:26px 0 30px}
+  .st-card.doc-qh{background:#FDE9DD;border:2px solid #EA4F00;border-left-width:8px;margin:26px 0 30px}
+  .doc-tag{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#fff;padding:4px 10px;border-radius:6px;margin-bottom:8px}
+  .doc-fpi .doc-tag{background:#1E5EA8}
+  .doc-qh .doc-tag{background:#EA4F00}
+  .doc-fpi textarea,.doc-qh textarea{overflow:hidden;resize:none}
+  .sig-zone{margin-top:18px;padding-top:14px;border-top:3px solid var(--accent)}
+  .sig-zone h3{margin:0 0 6px;font-size:18px}
   .mo b{display:block;font-size:14.5px}
   .mo small{display:block;color:#666;margin-top:2px;font-size:12.5px;line-height:1.35}
   .inline-ai input,.inline-ai textarea{margin-bottom:10px}
@@ -892,10 +901,10 @@ let dossier = makeDossier();
    son propre écran, sans passer par chantier/sous-traitants/aperçu/pdf.
    ========================================================================= */
 const STEP_LABELS = {
-  select: "Documents", chantier: "Chantier", "sous-traitants": "Intervention", apercu: "Aperçu", pdf: "PDF", signatures: "Signatures"
+  select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
-function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf","signatures"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V10";
+function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
+const SAV_VERSION = "V11";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -2641,9 +2650,9 @@ const MO_RESUME = {
 };
 function toggleCustom(id){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st){ st.showCustom=!st.showCustom; render(); } }
 function renderStep2(){
-  let h = '<div class="card"><h2>Intervention SAV</h2><p class="hint">Choisissez le ou les modes opératoires de cette intervention.</p>';
+  let h = '<div class="card"><h2>Modes opératoires</h2><p class="hint">Choisissez le ou les modes opératoires de cette fiche.</p>';
   dossier.sousTraitants.forEach((st, idx)=>{
-    h += '<div class="st-card"><div class="st-card-head"><strong>Intervention '+(idx+1)+'</strong>';
+    h += '<div class="st-card"><div class="st-card-head"><strong>Fiche '+(idx+1)+'</strong>';
     h += dossier.sousTraitants.length>1 ? '<button class="btn ghost" onclick="removeSousTraitant(\''+st.id+'\')">Supprimer</button>' : '';
     h += '</div><label>Mode(s) opératoire(s) SAV</label>';
     CONFIG.corpsDeMetier.forEach((m,k)=>{
@@ -2692,7 +2701,7 @@ function renderStep3(){
   if(dossier.docs.fiche){
     dossier.sousTraitants.forEach((st,idx)=>{
       if(!st.preview) st.preview = computePreview(st);
-      h += '<div class="st-card"><div class="st-card-head"><strong>Fiche — '+esc(st.entreprise||("Intervention "+(idx+1)))+'</strong></div>';
+      h += '<div class="st-card doc-fpi"><div class="doc-tag">FICHE DE 1ÈRE INTERVENTION</div><div class="st-card-head"><strong>'+esc(st.entreprise||("Fiche "+(idx+1)))+'</strong></div>';
       h += previewField(st.id,"Nature des travaux","nature",st.preview.nature);
       h += previewField(st.id,"Étapes d'intervention","etapesText",st.preview.etapesText);
       h += '<div class="field"><label>Risques liés aux travaux (## = titre, - = consigne)</label><textarea rows="8" oninput="updatePreviewField(\''+st.id+'\',\'risquesMetierText\',this.value)">'+esc(st.preview.risquesMetierText||"")+'</textarea></div>';
@@ -2707,7 +2716,7 @@ function renderStep3(){
     });
   }
   if(dossier.docs.quartHeure){
-    h += '<div class="st-card"><div class="st-card-head"><strong>Quart d\'heure sécurité (commun au chantier)</strong></div>';
+    h += '<div class="st-card doc-qh"><div class="doc-tag">1/4H SÉCURITÉ</div><div class="st-card-head"><strong>Quart d\'heure sécurité (commun au chantier)</strong></div>';
     h += '<div class="grid2">';
     h += '<div class="field"><label>Présentateur</label><input type="text" value="'+esc(dossier.quartHeure.presentateur)+'" placeholder="'+esc(dossier.cdtNom||"")+'" oninput="dossier.quartHeure.presentateur=this.value"></div>';
     h += '<div class="field"><label>Support fait par</label><input type="text" value="'+esc(dossier.quartHeure.supportPar)+'" placeholder="'+esc(dossier.cdtNom||"")+'" oninput="dossier.quartHeure.supportPar=this.value"></div>';
@@ -2726,13 +2735,32 @@ function previewField(id,label,key,value){
 }
 
 let pdfWithSigs = false, lastPdfBlob = null, signedDone = false;
+function sigBlockHtml(){
+  let h = '<div class="sig-zone"><h3>Signatures des compagnons</h3><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son nom et prénom puis signe au doigt.</p>';
+  dossier.sousTraitants.forEach((st,si)=>{
+    if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Fiche '+(si+1)+'</strong></div>';
+    st.compagnons.forEach((c,i)=>{
+      h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div>'
+        + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
+        + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.</p>'
+        + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
+        + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
+    });
+    h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">＋ Ajouter un compagnon</button>';
+  });
+  return h+'</div>';
+}
 function renderStep4(){
-  let h = '<div class="card"><h2>Relecture du PDF</h2><p class="hint">Lisez la fiche en entier avant de faire signer les compagnons.</p>';
+  if(signedDone) return renderStep5();
+  let h = '<div class="card pdfcard"><h2>PDF et signatures</h2><p class="hint">'+(dossier.docs.fiche?'Lisez le PDF jusqu\'en bas : les signatures des compagnons sont juste en dessous.':'Lisez le PDF puis partagez-le ou téléchargez-le.')+'</p>';
   if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
   h += '<div id="pv" class="pv"></div>';
-  h += '<div style="margin:10px 0;"><button class="btn secondary" onclick="window.open(lastPdfUrl,\'_blank\')">Ouvrir le PDF en plein écran</button></div>';
-  if(dossier.docs.fiche) h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="goNext()">Faire signer →</button></div></div>';
-  else h += '<button class="btn" style="width:100%;margin-bottom:10px;" onclick="sharePdf()">Partager par mail</button><button class="btn secondary" style="width:100%;margin-bottom:10px;" onclick="dlPdf()">Télécharger le PDF</button><div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
+  if(dossier.docs.fiche){
+    h += sigBlockHtml();
+    h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
+  } else {
+    h += '<button class="btn" style="width:100%;margin-bottom:10px;" onclick="sharePdf()">Partager par mail</button><button class="btn secondary" style="width:100%;margin-bottom:10px;" onclick="dlPdf()">Télécharger le PDF</button><div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
+  }
   return h;
 }
 function updateComp(id,i,k,v){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st&&st.compagnons[i]) st.compagnons[i][k]=v; }
@@ -2745,7 +2773,7 @@ function renderStep5(){
       + '<button class="btn secondary" style="width:100%;" onclick="dlPdf()">Télécharger le PDF</button>'
       + '<p class="small-note">« Partager » ouvre le menu du téléphone : choisissez votre messagerie, le PDF part en pièce jointe.</p>'
       + '<div id="pv" class="pv" style="margin-top:12px;"></div>'
-      + '<div class="row-actions"><button class="btn secondary" onclick="signedDone=false;render()">← Revoir les signatures</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
+      + '<div class="row-actions"><button class="btn secondary" onclick="signedDone=false;generatePdf(false);render()">← Revoir les signatures</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
     return h;
   }
   h += '<div class="card"><h2>Signatures des compagnons</h2><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son nom puis signe au doigt.</p>';
@@ -2830,10 +2858,13 @@ function generatePdf(withSigs){
 }
 function goStep(key){
   if(key==="apercu"){ dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); }); ensureThemes(); }
-  if(key==="pdf" || (key==="signatures" && !lastPdfUrl)) generatePdf(false);
-  if(key==="signatures"){ signedDone=false; dossier.sousTraitants.forEach(st=>{ const n=Math.max(1,parseInt(dossier.nbComp)||1); while(st.compagnons.length<n) st.compagnons.push({prenom:"",nom:"",sig:null}); }); }
+  if(key==="pdf") generatePdf(false);
+  if(key==="pdf"){ signedDone=false; dossier.sousTraitants.forEach(st=>{ const n=Math.max(1,parseInt(dossier.nbComp)||1); while(st.compagnons.length<n) st.compagnons.push({prenom:"",nom:"",sig:null}); }); }
   currentStep = key; if(key!=="pdf") genMessage=null; window.scrollTo(0,0); render();
 }
+
+function autosizeAll(){ document.querySelectorAll("main textarea").forEach(t=>{ t.style.height="auto"; t.style.height=(t.scrollHeight+4)+"px"; }); }
+document.addEventListener("input", e=>{ const t=e.target; if(t && t.tagName==="TEXTAREA" && t.closest("main")){ t.style.height="auto"; t.style.height=(t.scrollHeight+4)+"px"; } });
 
 function renderAdminGate(){
   const first = !CONFIG.adminCodeHash;
@@ -2942,13 +2973,13 @@ function render(){
     if(currentStep==="sous-traitants") html += renderStep2();
     if(currentStep==="apercu") html += renderStep3();
     if(currentStep==="pdf") html += renderStep4();
-    if(currentStep==="signatures") html += renderStep5();
     html += '</main>';
     html += '<div class="footer-note">Paris Ouest Construction — outil interne SAV créé par Jean Bourdel. Ne pas diffuser en dehors de l\'entreprise.<br>Version '+SAV_VERSION+'</div>';
   }
   app.innerHTML = html;
-  if(unlocked && (currentStep==="pdf" || (currentStep==="signatures" && signedDone))) showPdf();
-  if(unlocked && currentStep==="signatures" && !signedDone) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i)));
+  autosizeAll();
+  if(unlocked && currentStep==="pdf") showPdf();
+  if(unlocked && currentStep==="pdf" && !signedDone && dossier.docs.fiche) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i)));
 }
 
 /* =========================================================================
