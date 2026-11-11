@@ -896,7 +896,7 @@ function makeDossier(){
     siteIntervention: "",
     affaire:"", nomChantier:"", adresse:"", cdtNom:(function(){ try{ return localStorage.getItem("sav_cdt")||""; }catch(e){ return ""; } })(), codeAcces:"", dateDebut:defaultStartDate(), dateFin:"", nbZones:1,
     sousTraitants:[ makeSousTraitant() ],
-    quartHeure:{ presentateur:"", supportPar:"", themesText:"", groupe:"", sig:"", siteLine:"" },
+    quartHeure:{ participants:[], presentateur:"", supportPar:"", themesText:"", groupe:"", sig:"", siteLine:"" },
     risquesSpec:{ amiante:false, plomb:false, coactivite:false, chaleur:false, elecNonConsigne:false, gazAlimente:false, siteOccupe:false }
   };
 }
@@ -913,7 +913,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V12";
+const SAV_VERSION = "V13";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -1389,6 +1389,9 @@ class Doc{
       cx=this.margin;
       if(r%2===1){ p.setFillColor(250,244,238); p.rect(this.margin,this.y,totalW,rowH,"F"); }
       colW.forEach(w=>{ p.setDrawColor(210,206,199); p.rect(cx,this.y,w,rowH,"S"); cx+=w; });
+      if(pdfWithSigs && dossier.quartHeure.participants[r]){ const q=dossier.quartHeure.participants[r], nm=splitNom(q.nom); p.setFont("helvetica","normal"); p.setFontSize(SZ.body); p.setTextColor(30,30,30);
+        p.text(String(nm.prenom), this.margin+3, this.y+5.2); p.text(String(nm.nom), this.margin+colW[0]+3, this.y+5.2);
+        if(q.sig){ try{ p.addImage(q.sig,"PNG",this.margin+colW[0]+colW[1]+2,this.y+0.6,colW[2]-4,rowH-1.2); }catch(e){} } }
       this.y += rowH;
     }
   }
@@ -2744,36 +2747,42 @@ function previewField(id,label,key,value){
 }
 
 let pdfWithSigs = false, lastPdfBlob = null, signedDone = false;
+function sigCardHtml(id,c,i,qh){
+  return '<div class="st-card"><strong>'+(qh?'Participant ':'Compagnon ')+(i+1)+'</strong><div>'
+    + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" '+(qh?'id="qhn_'+i+'" ':'')+'value="'+esc(c.nom)+'" oninput="updateComp(\''+id+'\','+i+',\'nom\',this.value)"></div></div>'
+    + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme '+(qh?'avoir assisté au quart d\'heure sécurité et en avoir compris les consignes.':'avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.')+'</p>'
+    + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+id+'_'+i+'"></canvas>'
+    + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
+}
 function sigBlockHtml(){
   let h = '<div class="sig-zone"><h3>Signatures des compagnons</h3><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son nom et prénom puis signe au doigt.</p>';
   dossier.sousTraitants.forEach((st,si)=>{
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Fiche '+(si+1)+'</strong></div>';
-    st.compagnons.forEach((c,i)=>{
-      h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div>'
-        + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
-        + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.</p>'
-        + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
-        + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
-    });
+    st.compagnons.forEach((c,i)=>{ h += sigCardHtml(st.id,c,i,false); });
     h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">＋ Ajouter un compagnon</button>';
   });
   return h+'</div>';
 }
-function renderStep4(){
-  if(signedDone) return renderStep5();
-  let h = '<div class="card pdfcard"><h2>PDF et signatures</h2><p class="hint">'+(dossier.docs.fiche?'Lisez le PDF jusqu\'en bas : les signatures des compagnons sont juste en dessous.':'Lisez le PDF puis partagez-le ou téléchargez-le.')+'</p>';
-  if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
-  h += '<div id="pv" class="pv"></div>';
-  if(dossier.docs.fiche){
-    h += sigBlockHtml();
-    h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
-  } else {
-    h += '<button class="btn" style="width:100%;margin-bottom:10px;" onclick="sharePdf()">Partager par mail</button><button class="btn secondary" style="width:100%;margin-bottom:10px;" onclick="dlPdf()">Télécharger le PDF</button><div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
-  }
+function sigBlockQhHtml(){
+  let h = '<div class="sig-zone"><h3>Signatures du 1/4h sécurité</h3><p class="hint">Chaque participant écrit son nom et prénom puis signe au doigt.</p>';
+  dossier.quartHeure.participants.forEach((c,i)=>{ h += sigCardHtml("QH",c,i,true); });
+  h += '<button class="btn secondary" onclick="addComp(\'QH\')">＋ Ajouter un participant</button></div>';
   return h;
 }
-function updateComp(id,i,k,v){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st&&st.compagnons[i]) st.compagnons[i][k]=v; }
-function addComp(id){ const st=dossier.sousTraitants.find(s=>s.id===id); st.compagnons.push({prenom:"",nom:"",sig:null}); render(); window.scrollTo(0,document.body.scrollHeight); }
+function renderStep4(){
+  if(signedDone) return renderStep5();
+  let h = '<div class="card pdfcard"><h2>PDF et signatures</h2>';
+  if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
+  if(dossier.docs.fiche){ h += '<div id="pv1" class="pv"></div>'+sigBlockHtml(); }
+  if(dossier.docs.quartHeure){ h += '<div id="pv2" class="pv"></div>'+sigBlockQhHtml(); }
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
+  return h;
+}
+function getComps(id){ if(id==="QH") return dossier.quartHeure.participants; const st=dossier.sousTraitants.find(s=>s.id===id); return st?st.compagnons:null; }
+function splitNom(full){ const t=String(full||"").trim().replace(/\s+/g," "); const i=t.indexOf(" "); return i<0?{nom:t,prenom:""}:{nom:t.slice(0,i),prenom:t.slice(i+1)}; }
+function updateComp(id,i,k,v){ const cs=getComps(id); if(!cs||!cs[i]) return; const old=cs[i][k]; cs[i][k]=v;
+  if(id!=="QH" && k==="nom"){ const q=dossier.quartHeure.participants[i]; if(q && (q.nom===""||q.nom===old)){ q.nom=v; const el=document.getElementById("qhn_"+i); if(el) el.value=v; } } }
+function addComp(id){ const cs=getComps(id); cs.push({prenom:"",nom:"",sig:null}); render(); window.scrollTo(0,document.body.scrollHeight); }
 function renderStep5(){
   let h = '';
   if(signedDone){
@@ -2802,7 +2811,7 @@ function renderStep5(){
   return h;
 }
 function initSig(stId, i){
-  const st = dossier.sousTraitants.find(s=>s.id===stId); const c = st&&st.compagnons[i];
+  const cs = getComps(stId); const c = cs&&cs[i];
   const cv = document.getElementById("sig_"+stId+"_"+i); if(!cv||!c) return;
   const r = cv.getBoundingClientRect(), dpr = Math.max(1, window.devicePixelRatio||1);
   cv.width = Math.round(r.width*dpr); cv.height = Math.round(r.height*dpr);
@@ -2816,12 +2825,12 @@ function initSig(stId, i){
   cv.onpointerup=end; cv.onpointercancel=end; cv.onpointerleave=end;
 }
 function clearSig(stId,i){
-  const st=dossier.sousTraitants.find(s=>s.id===stId); const cv=document.getElementById("sig_"+stId+"_"+i); if(!cv||!st) return;
+  const cs=getComps(stId); const cv=document.getElementById("sig_"+stId+"_"+i); if(!cv||!cs) return;
   const g=cv.getContext("2d"); g.save(); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height); g.restore();
-  st.compagnons[i].sig=null; const s=document.getElementById("sg_"+stId+"_"+i); if(s) s.textContent="";
+  cs[i].sig=null; const s=document.getElementById("sg_"+stId+"_"+i); if(s) s.textContent="";
 }
 function saveSigned(){
-  const all = dossier.sousTraitants.reduce((a,s)=>a.concat(s.compagnons),[]);
+  const all = (dossier.docs.fiche?dossier.sousTraitants.reduce((a,s)=>a.concat(s.compagnons),[]):[]).concat(dossier.docs.quartHeure?dossier.quartHeure.participants:[]);
   const manque = all.filter(c=>!c.sig || !((c.nom||"")+(c.prenom||"")).trim());
   if(manque.length && !confirm(manque.length+" compagnon(s) sans nom ou sans signature. Enregistrer quand même ?")) return;
   const btn=document.querySelector(".row-actions .btn:not(.secondary)"); if(btn){ btn.disabled=true; btn.textContent="Enregistrement…"; }
@@ -2835,13 +2844,17 @@ function loadPdfjs(){ return new Promise((ok,ko)=>{
     .then(txt=>{ pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([txt],{type:"text/javascript"})); window.__pdfWorkerOk=true; ok(); }).catch(ko);
   if(window.pdfjsLib) return go();
   const s=document.createElement("script"); s.src=B+"pdf.min.js"; s.onload=go; s.onerror=ko; document.head.appendChild(s); }); }
+let fichePages = 0;
 async function showPdf(){
-  const box=document.getElementById("pv"); if(!box||!lastPdfBlob) return;
+  const box0=document.getElementById("pv"), b1=document.getElementById("pv1"), b2=document.getElementById("pv2"); if(!(box0||b1||b2)||!lastPdfBlob) return;
   const mine = lastPdfUrl;
-  try{ await loadPdfjs(); const doc=await pdfjsLib.getDocument({data:await lastPdfBlob.arrayBuffer()}).promise; if(mine!==lastPdfUrl) return; box.innerHTML="";
-    for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1}); const sc=Math.min(2.2,Math.min(box.clientWidth||360,1100)*Math.max(1,window.devicePixelRatio||1)/v0.width); const vp=pg.getViewport({scale:sc});
+  try{ await loadPdfjs(); const doc=await pdfjsLib.getDocument({data:await lastPdfBlob.arrayBuffer()}).promise; if(mine!==lastPdfUrl) return;
+    [box0,b1,b2].forEach(b=>{ if(b) b.innerHTML=""; });
+    for(let n=1;n<=doc.numPages;n++){
+      const box = box0 || ((b1 && (n<=fichePages || !b2)) ? b1 : b2); if(!box) continue;
+      const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1}); const sc=Math.min(2.2,Math.min(box.clientWidth||360,1100)*Math.max(1,window.devicePixelRatio||1)/v0.width); const vp=pg.getViewport({scale:sc});
       const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height; box.appendChild(cv); await pg.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise; }
-  }catch(e){ box.innerHTML='<iframe class="pdf" src="'+lastPdfUrl+'#view=FitH"></iframe>'; }
+  }catch(e){ const box=box0||b1||b2; if(box) box.innerHTML='<iframe class="pdf" src="'+lastPdfUrl+'#view=FitH"></iframe>'; }
 }
 function dlPdf(){ const a=document.createElement("a"); a.href=lastPdfUrl; a.download=lastPdfFilename; document.body.appendChild(a); a.click(); a.remove(); }
 async function sharePdf(){
@@ -2857,7 +2870,8 @@ function generatePdf(withSigs){
     pdfWithSigs = !!withSigs;
     const { jsPDF } = window.jspdf; const pdf = new jsPDF({ unit:"mm", format:"a4", compress:true }); const D = new Doc(pdf);
     ensureThemes();
-    dossier.sousTraitants.forEach((st,i)=> renderFicheIntervention(D, st, i));
+    if(dossier.docs.fiche) dossier.sousTraitants.forEach((st,i)=> renderFicheIntervention(D, st, i));
+    fichePages = dossier.docs.fiche ? D.pageNum : 0;
     if(dossier.docs.quartHeure) renderQuartHeure(D);
     const safe = s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9\-]+/gi,"_").replace(/^_+|_+$/g,"");
     lastPdfFilename = "Fiche_SAV_"+([safe(dossier.affaire),safe(dossier.chrono),safe(dossier.nomChantier)].filter(Boolean).join("_")||"intervention")+(withSigs?"_signee":"")+".pdf";
@@ -2868,7 +2882,7 @@ function generatePdf(withSigs){
 function goStep(key){
   if(key==="apercu"){ dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); }); ensureThemes(); }
   if(key==="pdf") generatePdf(false);
-  if(key==="pdf"){ signedDone=false; dossier.sousTraitants.forEach(st=>{ const n=Math.max(1,parseInt(dossier.nbComp)||1); while(st.compagnons.length<n) st.compagnons.push({prenom:"",nom:"",sig:null}); }); }
+  if(key==="pdf"){ signedDone=false; { const n=Math.max(1,parseInt(dossier.nbComp)||1); while(dossier.quartHeure.participants.length<n) dossier.quartHeure.participants.push({prenom:"",nom:"",sig:null}); } dossier.sousTraitants.forEach(st=>{ const n=Math.max(1,parseInt(dossier.nbComp)||1); while(st.compagnons.length<n) st.compagnons.push({prenom:"",nom:"",sig:null}); }); }
   currentStep = key; if(key!=="pdf") genMessage=null; window.scrollTo(0,0); render();
 }
 
@@ -2990,7 +3004,7 @@ function render(){
   app.innerHTML = html;
   autosizeAll();
   if(unlocked && currentStep==="pdf") showPdf();
-  if(unlocked && currentStep==="pdf" && !signedDone && dossier.docs.fiche) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i)));
+  if(unlocked && currentStep==="pdf" && !signedDone) { if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i))); if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((c,i)=>initSig("QH",i)); }
 }
 
 /* =========================================================================
