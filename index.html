@@ -814,7 +814,7 @@ function defaultConfig(){
     textes: {
       contraintesSite: "XXXX",
       attestation:
-        "Chaque compagnon, en signant ci-dessous, atteste avoir reçu et compris les consignes techniques et de sécurité liées à cette intervention."
+        "Chaque compagnon, en signant ci-dessous, atteste avoir reçu et compris les consignes techniques et de sécurité liées à cette intervention, et s'engage à les respecter."
     }
   };
 }
@@ -826,7 +826,7 @@ let CONFIG = defaultConfig();
 let unlocked = false;
 let gateInput = "";
 let gateError = "";
-let currentStep = "chantier"; // clé parmi activeStepKeys()
+let currentStep = "select"; // clé parmi activeStepKeys()
 let settingsOpen = false;
 let menuOpen = false;
 
@@ -887,9 +887,10 @@ let dossier = makeDossier();
    son propre écran, sans passer par chantier/sous-traitants/aperçu/pdf.
    ========================================================================= */
 const STEP_LABELS = {
-  chantier: "Chantier", "sous-traitants": "Intervention", apercu: "Aperçu", pdf: "PDF", signatures: "Signatures"
+  select: "Documents", chantier: "Chantier", "sous-traitants": "Intervention", apercu: "Aperçu", pdf: "PDF", signatures: "Signatures"
 };
-function activeStepKeys(){ return ["chantier","sous-traitants","apercu","pdf","signatures"]; }
+function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf","signatures"] : ["select","chantier","apercu","pdf"]; }
+const SAV_VERSION = "V9";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -1598,7 +1599,7 @@ function renderFicheIntervention(D, st, index){
       const c = (pdfWithSigs && comps[r]) || null; let x=D.margin;
       cols.forEach(w=>{ p.setDrawColor(210,206,199); p.rect(x,D.y,w,rowH,"S"); x+=w; });
       if(c){ p.setFont("helvetica","normal"); p.setFontSize(9.5); p.setTextColor(30,30,30);
-        p.text(p.splitTextToSize(((c.prenom||"")+" "+(c.nom||"")).trim(),cols[0]-4),D.margin+2,D.y+5.5);
+        p.text(p.splitTextToSize(((c.nom||"")+" "+(c.prenom||"")).trim(),cols[0]-4),D.margin+2,D.y+5.5);
         p.text(todayFr(),D.margin+cols[0]+2,D.y+5.5);
         if(c.sig){ try{ p.addImage(c.sig,"PNG",D.margin+cols[0]+cols[1]+2,D.y+1.2,cols[2]-4,rowH-2.4); }catch(e){} } }
       D.y+=rowH;
@@ -1891,7 +1892,7 @@ function updatePreviewField(id, field, value){
 function updateThemesText(value){ dossier.quartHeure.themesText = value; }
 function newDossier(){
   if(confirm("Repartir sur un nouveau dossier ? Le dossier actuel (non enregistré) sera perdu.")){
-    dossier = makeDossier(); currentStep = "chantier"; signedDone=false; genMessage=null; lastPdfUrl=null; render();
+    dossier = makeDossier(); currentStep = "select"; genMessage=null; render();
   }
 }
 function toggleSettings(){ settingsOpen = !settingsOpen; if(!settingsOpen){ adminOk=false; settingsMsg=null; } render(); }
@@ -2106,15 +2107,12 @@ function renderStepSelect(){
     '<label class="tile'+(checked?' sel':'')+'"><input type="checkbox" '+(checked?'checked':'')+' onchange="'+handler+'">'+
     '<span class="tile-ico">'+TILE_ICONS[key]+'</span>'+
     '<span class="tile-txt"><b>'+esc(label)+'</b><small>'+esc(desc)+'</small></span><span class="tile-chk"></span></label>';
-  let h = '<div class="pick-card"><div class="hero-band"><span class="logo-chip"><img src="data:image/png;base64,'+LOGO_BOX_B64+'" alt="Démarrage de chantier"></span>'+
-    '<div><h2>Que faut-il préparer ?</h2><p>Cochez tout pour le dossier complet habituel, ou seulement ce dont vous avez besoin.</p></div></div><div class="pick-body"><div class="tile-grid">';
-  h += tile("fiche","Fiche de 1ère intervention","Une fiche par sous-traitant (travaux, EPI, mode opératoire).",dossier.docs.fiche,"toggleDocOther('fiche', this.checked)");
-  h += tile("quartHeure","1/4h sécurité","Thèmes et feuille d'émargement, communs au chantier.",dossier.docs.quartHeure,"toggleDocOther('quartHeure', this.checked)");
-  h += tile("affichages","Affichages de chantier","Base vie, zone de stockage, et par zone : interdit au public + EPI.",dossier.docs.affichages,"toggleDocOther('affichages', this.checked)");
-  h += tile("urgence","Fiche d'urgence","Numéros d'urgence en gros, adresse du chantier, contacts. À afficher à la base vie.",dossier.docs.urgence,"toggleDocOther('urgence', this.checked)");
-  h += tile("materiel","Liste de matériel (OPC)","Commande par fournisseur pour une opération coup de poing. Incompatible avec les autres documents.",dossier.docs.materiel,"toggleDocMateriel(this.checked)");
+  let h = '<div class="pick-card"><div class="hero-band"><span class="logo-chip"><img src="data:image/png;base64,'+LOGO_SAV_B64+'" alt="Démarrage SAV"></span>'+
+    '<div><h2>Que faut-il préparer ?</h2><p>Cochez les deux pour le dossier complet, ou seulement ce dont vous avez besoin.</p></div></div><div class="pick-body"><div class="tile-grid">';
+  h += tile("fiche","Fiche de 1ère intervention","Fiche de suivi d'intervention SAV : mode opératoire, consignes de sécurité, signatures des compagnons.",dossier.docs.fiche,"toggleDocOther('fiche', this.checked)");
+  h += tile("quartHeure","1/4h sécurité","Thèmes et feuille d'émargement.",dossier.docs.quartHeure,"toggleDocOther('quartHeure', this.checked)");
   h += '</div>';
-  const noneChecked = !dossier.docs.fiche && !dossier.docs.quartHeure && !dossier.docs.affichages && !dossier.docs.urgence && !dossier.docs.materiel;
+  const noneChecked = !dossier.docs.fiche && !dossier.docs.quartHeure;
   if(noneChecked) h += '<div class="error-msg" style="margin-top:12px;">Cochez au moins un document à générer.</div>';
   h += '<div class="row-actions"><span></span><button class="btn" '+(noneChecked?"disabled":"")+' onclick="goNext()">Continuer →</button></div>';
   h += '</div></div>';
@@ -2587,17 +2585,19 @@ function renderStep1(){
   h += '<div class="field"><label>Documents du PDF</label><label class="check-item"><input type="checkbox" checked disabled> Fiche de suivi d\'intervention</label><label class="check-item"><input type="checkbox" '+(dossier.docs.quartHeure?'checked':'')+' onchange="dossier.docs.quartHeure=this.checked; render()"> 1/4h sécurité (page d\'émargement)</label></div>';
   h += '<div class="grid2">';
   h += field("Nom du chantier", dossier.nomChantier, "nomChantier", "ex. Résidence Les Lilas");
-  h += field("Numéro affaire / code", dossier.affaire, "affaire", "ex. 1466-102");
   h += field("N° chrono (SAV)", dossier.chrono, "chrono", "ex. 2026-018");
   h += '</div>';
+  h += '<div class="grid2">';
   h += field("Responsable (votre nom)", dossier.cdtNom, "cdtNom", "ex. Jean Bourdel");
-  h += field("Téléphone du responsable", dossier.tel, "tel", "ex. 06 12 34 56 78", "tel");
+  h += field("Téléphone", dossier.tel, "tel", "ex. 06 12 34 56 78", "tel");
+  h += '</div>';
   h += field("Adresse du site d'intervention", dossier.adresse, "adresse", "ex. 12 rue de la Résidence, 75015 Paris");
   h += field("Contact sur place", dossier.contactSite, "contactSite", "ex. Mme Dupont, gardienne (nom et téléphone)");
   h += field("Nombre de compagnons", dossier.nbComp, "nbComp", "ex. 2", "number");
   if(dossier.docs.fiche){
     h += '<div class="grid3">';
     h += field("Code d'accès du chantier (porte)", dossier.codeAcces, "codeAcces", "ex. 3B45");
+    h += field("Numéro affaire / code", dossier.affaire, "affaire", "ex. 1466-102");
     h += field("Date de début", dossier.dateDebut, "dateDebut", "", "date");
     h += field("Date de fin (estimée)", dossier.dateFin, "dateFin", "", "date");
     h += '</div>';
@@ -2714,7 +2714,8 @@ function renderStep4(){
   if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
   h += '<div id="pv" class="pv"></div>';
   h += '<div style="margin:10px 0;"><button class="btn secondary" onclick="window.open(lastPdfUrl,\'_blank\')">Ouvrir le PDF en plein écran</button></div>';
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="goNext()">Faire signer →</button></div></div>';
+  if(dossier.docs.fiche) h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="goNext()">Faire signer →</button></div></div>';
+  else h += '<button class="btn" style="width:100%;margin-bottom:10px;" onclick="sharePdf()">Partager par mail</button><button class="btn secondary" style="width:100%;margin-bottom:10px;" onclick="dlPdf()">Télécharger le PDF</button><div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
   return h;
 }
 function updateComp(id,i,k,v){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st&&st.compagnons[i]) st.compagnons[i][k]=v; }
@@ -2736,8 +2737,9 @@ function renderStep5(){
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Intervention '+(si+1)+(t?" : "+esc(t.nom):"")+'</strong></div>';
     st.compagnons.forEach((c,i)=>{
       h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div class="row2">'
-        + '<div class="field"><label>Prénom</label><input type="text" value="'+esc(c.prenom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'prenom\',this.value)"></div>'
-        + '<div class="field"><label>Nom</label><input type="text" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
+        + '<div class="field"><label>Nom</label><input type="text" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div>'
+        + '<div class="field"><label>Prénom</label><input type="text" value="'+esc(c.prenom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'prenom\',this.value)"></div></div>'
+        + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.</p>'
         + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
         + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
     });
@@ -2919,13 +2921,14 @@ function render(){
     html += renderGate();
   } else {
     html += '<main>'+renderStepper();
+    if(currentStep==="select") html += renderStepSelect();
     if(currentStep==="chantier") html += renderStep1();
     if(currentStep==="sous-traitants") html += renderStep2();
     if(currentStep==="apercu") html += renderStep3();
     if(currentStep==="pdf") html += renderStep4();
     if(currentStep==="signatures") html += renderStep5();
     html += '</main>';
-    html += '<div class="footer-note">Paris Ouest Construction — outil interne SAV créé par Jean Bourdel. Ne pas diffuser en dehors de l\'entreprise.</div>';
+    html += '<div class="footer-note">Paris Ouest Construction — outil interne SAV créé par Jean Bourdel. Ne pas diffuser en dehors de l\'entreprise.<br>Version '+SAV_VERSION+'</div>';
   }
   app.innerHTML = html;
   if(unlocked && (currentStep==="pdf" || (currentStep==="signatures" && signedDone))) showPdf();
