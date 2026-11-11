@@ -691,6 +691,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .signed{color:var(--success);font-weight:700;font-size:13px}
   .pv canvas{width:100%;height:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:#fff;display:block}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .mo{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin:8px 0;background:#fff;cursor:pointer}
+  .mo.sel{border-color:var(--accent);background:#EEF4FB}
+  .mo input{width:auto;margin-top:3px;flex:none}
+  .mo b{display:block;font-size:14.5px}
+  .mo small{display:block;color:#666;margin-top:2px;font-size:12.5px;line-height:1.35}
   .inline-ai input,.inline-ai textarea{margin-bottom:10px}
   .inline-ai .grid2{row-gap:0}
   iframe.pdf{width:100%;height:70vh;border:1px solid var(--border);border-radius:10px;background:#fff}
@@ -890,7 +895,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Intervention", apercu: "Aperçu", pdf: "PDF", signatures: "Signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf","signatures"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V9";
+const SAV_VERSION = "V10";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -2582,7 +2587,6 @@ function renderStepMateriel(){
 
 function renderStep1(){
   let h = '<div class="card"><h2>Informations chantier</h2><p class="hint">Ces informations seront reprises sur les documents du dossier.</p>';
-  h += '<div class="field"><label>Documents du PDF</label><label class="check-item"><input type="checkbox" checked disabled> Fiche de suivi d\'intervention</label><label class="check-item"><input type="checkbox" '+(dossier.docs.quartHeure?'checked':'')+' onchange="dossier.docs.quartHeure=this.checked; render()"> 1/4h sécurité (page d\'émargement)</label></div>';
   h += '<div class="grid2">';
   h += field("Nom du chantier", dossier.nomChantier, "nomChantier", "ex. Résidence Les Lilas");
   h += field("N° chrono (SAV)", dossier.chrono, "chrono", "ex. 2026-018");
@@ -2629,24 +2633,37 @@ function field(label, value, key, placeholder, type){
 }
 
 function toggleST(id){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st){ st.showST=!st.showST; render(); } }
+const MO_RESUME = {
+  peinture:"Reprise des enduits, ponçage, impression, peinture de finition, plinthes",
+  faience:"Préparation du support, pose des carreaux, joints, finitions",
+  voile:"Colmatage de la venue d'eau, reprofilage, étanchéité complémentaire",
+  fissure:"Ouverture et nettoyage de la fissure, remplissage au mastic, rebouchage, lissage"
+};
+function toggleCustom(id){ const st=dossier.sousTraitants.find(s=>s.id===id); if(st){ st.showCustom=!st.showCustom; render(); } }
 function renderStep2(){
-  let h = '<div class="card"><h2>Intervention SAV</h2><p class="hint">Choisissez le ou les modes opératoires. Une fiche sera générée par intervention.</p>';
+  let h = '<div class="card"><h2>Intervention SAV</h2><p class="hint">Choisissez le ou les modes opératoires de cette intervention.</p>';
   dossier.sousTraitants.forEach((st, idx)=>{
     h += '<div class="st-card"><div class="st-card-head"><strong>Intervention '+(idx+1)+'</strong>';
     h += dossier.sousTraitants.length>1 ? '<button class="btn ghost" onclick="removeSousTraitant(\''+st.id+'\')">Supprimer</button>' : '';
-    h += '</div><label>Mode(s) opératoire(s) SAV</label><div class="check-grid">';
-    CONFIG.corpsDeMetier.forEach(m=>{
+    h += '</div><label>Mode(s) opératoire(s) SAV</label>';
+    CONFIG.corpsDeMetier.forEach((m,k)=>{
       const checked = st.metiers.includes(m.id);
-      h += '<label class="check-item"><input type="checkbox" '+(checked?"checked":"")+' onchange="toggleMetier(\''+st.id+'\',\''+m.id+'\',this.checked)">'+esc(m.nom)+(m._custom?'<span class="tag">personnalisé</span>':'')+'</label>';
+      h += '<label class="mo'+(checked?' sel':'')+'"><input type="checkbox" '+(checked?"checked":"")+' onchange="toggleMetier(\''+st.id+'\',\''+m.id+'\',this.checked)">'
+        + '<span><b>'+(k+1)+'. '+esc(m.nom)+(m._custom?' <span class="tag">ajouté</span>':'')+'</b>'
+        + (MO_RESUME[m.id]?'<small>'+esc(MO_RESUME[m.id])+'</small>':(m.nature?'<small>'+esc(String(m.nature).split("\n")[0])+'</small>':''))+'</span></label>';
     });
-    h += '</div>';
-    h += '<div class="inline-ai"><label>Mode opératoire absent de la liste ? Ajoutez-le manuellement :</label>';
-    h += '<input type="text" placeholder="Nom du mode opératoire" value="'+esc(st.customNom||"")+'" oninput="updateST(\''+st.id+'\',\'customNom\',this.value)">';
-    h += '<input type="text" placeholder="Nature des travaux" value="'+esc(st.customNature||"")+'" oninput="updateST(\''+st.id+'\',\'customNature\',this.value)">';
-    h += '<input type="text" placeholder="Produits / matériaux" value="'+esc(st.customProduits||"")+'" oninput="updateST(\''+st.id+'\',\'customProduits\',this.value)">';
-    h += '<input type="text" placeholder="Outillage / matériel" value="'+esc(st.customOutillage||"")+'" oninput="updateST(\''+st.id+'\',\'customOutillage\',this.value)">';
-    h += '<textarea rows="3" placeholder="Étapes d\'intervention (une par ligne)" oninput="updateST(\''+st.id+'\',\'customEtapes\',this.value)">'+esc(st.customEtapes||"")+'</textarea>';
-    h += '<button class="btn secondary" onclick="addCustomMetier(\''+st.id+'\')">＋ Ajouter ce mode opératoire à la fiche</button></div>';
+    if(st.showCustom){
+      h += '<div class="inline-ai" style="margin-top:14px;"><label>Mode opératoire absent de la liste</label>';
+      h += '<input type="text" placeholder="Nom du mode opératoire" value="'+esc(st.customNom||"")+'" oninput="updateST(\''+st.id+'\',\'customNom\',this.value)">';
+      h += '<input type="text" placeholder="Nature des travaux" value="'+esc(st.customNature||"")+'" oninput="updateST(\''+st.id+'\',\'customNature\',this.value)">';
+      h += '<input type="text" placeholder="Produits / matériaux" value="'+esc(st.customProduits||"")+'" oninput="updateST(\''+st.id+'\',\'customProduits\',this.value)">';
+      h += '<input type="text" placeholder="Outillage / matériel" value="'+esc(st.customOutillage||"")+'" oninput="updateST(\''+st.id+'\',\'customOutillage\',this.value)">';
+      h += '<textarea rows="3" placeholder="Étapes d\'intervention (une par ligne)" oninput="updateST(\''+st.id+'\',\'customEtapes\',this.value)">'+esc(st.customEtapes||"")+'</textarea>';
+      h += '<button class="btn secondary" onclick="addCustomMetier(\''+st.id+'\');st.showCustom=false;render()">＋ Ajouter ce mode opératoire à la fiche</button> ';
+      h += '<button class="btn ghost" onclick="toggleCustom(\''+st.id+'\')">Annuler</button></div>';
+    } else {
+      h += '<div style="margin-top:12px;"><button class="btn secondary" onclick="toggleCustom(\''+st.id+'\')">＋ Ajouter un mode opératoire absent de la liste</button></div>';
+    }
     if(st.showST){
       h += '<div class="inline-ai" style="margin-top:14px;"><label>Entreprise sous-traitante</label>';
       h += '<input type="text" placeholder="Entreprise" value="'+esc(st.entreprise)+'" oninput="updateST(\''+st.id+'\',\'entreprise\',this.value)">';
@@ -2658,7 +2675,7 @@ function renderStep2(){
     }
     h += '</div>';
   });
-  h += '<button class="btn secondary" onclick="addSousTraitant()">＋ Ajouter une intervention</button>';
+  h += '<button class="btn secondary" onclick="addSousTraitant()">＋ Ajouter une intervention</button><p class="small-note">Ajoute une fiche complète (autres modes opératoires, autres compagnons) dans le même PDF.</p>';
   const manque = dossier.sousTraitants.some(s=>!s.metiers.length);
   if(manque) h += '<div class="error-msg" style="margin-top:12px;">Choisissez au moins un mode opératoire pour chaque intervention.</div>';
   h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn" '+(manque?"disabled":"")+' onclick="goNext()">Continuer vers l\'aperçu →</button></div>';
@@ -2736,9 +2753,8 @@ function renderStep5(){
     const t = CONFIG.corpsDeMetier.find(m=>m.id===(st.metiers||[])[0]);
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Intervention '+(si+1)+(t?" : "+esc(t.nom):"")+'</strong></div>';
     st.compagnons.forEach((c,i)=>{
-      h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div class="row2">'
-        + '<div class="field"><label>Nom</label><input type="text" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div>'
-        + '<div class="field"><label>Prénom</label><input type="text" value="'+esc(c.prenom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'prenom\',this.value)"></div></div>'
+      h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div>'
+        + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
         + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.</p>'
         + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
         + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
