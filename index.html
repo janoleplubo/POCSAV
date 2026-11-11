@@ -703,6 +703,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .doc-fpi textarea,.doc-qh textarea{overflow:hidden;resize:none}
   .sig-zone{margin-top:18px;padding-top:14px;border-top:3px solid var(--accent)}
   .sig-zone h3{margin:0 0 6px;font-size:18px}
+  .reader main{max-width:none;padding:0}
+  .reader .pdfcard{background:transparent;border:0;box-shadow:none;padding:0;margin:0;border-radius:0}
+  .reader .pdfcard>h2,.reader .pdfcard>.hint{display:none}
+  .reader .pv{background:#d9dbe1;padding:0;margin:0}
+  .reader .pv canvas{max-width:1100px;margin:0 auto 6px;border:0;border-radius:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .reader iframe.pdf{width:100%;height:100vh;border:0}
+  .reader .sig-zone{background:#fff;padding:18px 16px;max-width:1100px;margin:0 auto;border-top:3px solid var(--accent)}
+  .reader .row-actions{max-width:1100px;margin:0 auto}
+  .backfab{position:fixed;top:10px;left:10px;z-index:60;width:42px;height:42px;border-radius:50%;border:0;background:rgba(30,94,168,.92);color:#fff;font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer}
   .mo b{display:block;font-size:14.5px}
   .mo small{display:block;color:#666;margin-top:2px;font-size:12.5px;line-height:1.35}
   .inline-ai input,.inline-ai textarea{margin-bottom:10px}
@@ -904,7 +913,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V11";
+const SAV_VERSION = "V12";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -2830,7 +2839,7 @@ async function showPdf(){
   const box=document.getElementById("pv"); if(!box||!lastPdfBlob) return;
   const mine = lastPdfUrl;
   try{ await loadPdfjs(); const doc=await pdfjsLib.getDocument({data:await lastPdfBlob.arrayBuffer()}).promise; if(mine!==lastPdfUrl) return; box.innerHTML="";
-    for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1}); const sc=Math.min(2.2,(box.clientWidth||360)*Math.max(1,window.devicePixelRatio||1)/v0.width); const vp=pg.getViewport({scale:sc});
+    for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1}); const sc=Math.min(2.2,Math.min(box.clientWidth||360,1100)*Math.max(1,window.devicePixelRatio||1)/v0.width); const vp=pg.getViewport({scale:sc});
       const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height; box.appendChild(cv); await pg.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise; }
   }catch(e){ box.innerHTML='<iframe class="pdf" src="'+lastPdfUrl+'#view=FitH"></iframe>'; }
 }
@@ -2963,19 +2972,21 @@ function td(inner){ return '<td>'+inner+'</td>'; }
 function render(){
   const app = document.getElementById("app");
   if(!CONFIG){ app.innerHTML = "Chargement…"; return; }
-  let html = renderTopbar();
+  const reader = unlocked && currentStep==="pdf" && !signedDone;
+  let html = reader ? "" : renderTopbar();
   if(!unlocked){
     html += renderGate();
   } else {
-    html += '<main>'+renderStepper();
+    html += '<main>'+(reader?'<button class="backfab" onclick="goPrev()">←</button>':renderStepper());
     if(currentStep==="select") html += renderStepSelect();
     if(currentStep==="chantier") html += renderStep1();
     if(currentStep==="sous-traitants") html += renderStep2();
     if(currentStep==="apercu") html += renderStep3();
     if(currentStep==="pdf") html += renderStep4();
     html += '</main>';
-    html += '<div class="footer-note">Paris Ouest Construction — outil interne SAV créé par Jean Bourdel. Ne pas diffuser en dehors de l\'entreprise.<br>Version '+SAV_VERSION+'</div>';
+    if(!reader) html += '<div class="footer-note">Paris Ouest Construction — outil interne SAV créé par Jean Bourdel. Ne pas diffuser en dehors de l\'entreprise.<br>Version '+SAV_VERSION+'</div>';
   }
+  app.className = reader ? "reader" : "";
   app.innerHTML = html;
   autosizeAll();
   if(unlocked && currentStep==="pdf") showPdf();
