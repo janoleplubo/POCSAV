@@ -917,7 +917,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V14";
+const SAV_VERSION = "V15";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -2753,13 +2753,13 @@ function previewField(id,label,key,value){
 let pdfWithSigs = false, lastPdfBlob = null, signedDone = false;
 function sigCardHtml(id,c,i,qh){
   return '<div class="st-card"><strong>'+(qh?'Participant ':'Compagnon ')+(i+1)+'</strong><div>'
-    + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" '+(qh?'id="qhn_'+i+'" ':'')+'value="'+esc(c.nom)+'" oninput="updateComp(\''+id+'\','+i+',\'nom\',this.value)"></div></div>'
+    + '<div class="field"><label>Prénom et nom</label><input type="text" autocomplete="name" '+(qh?'id="qhn_'+i+'" ':'')+'value="'+esc(c.nom)+'" oninput="updateComp(\''+id+'\','+i+',\'nom\',this.value)"></div></div>'
     + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme '+(qh?'avoir assisté au quart d\'heure sécurité et en avoir compris les consignes.':'avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.')+'</p>'
     + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+id+'_'+i+'"></canvas>'
     + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
 }
 function sigBlockHtml(){
-  let h = '<div class="sig-zone"><h3>Signatures des compagnons</h3><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son nom et prénom puis signe au doigt.</p>';
+  let h = '<div class="sig-zone"><h3>Signatures des compagnons</h3><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son prénom et nom puis signe au doigt.</p>';
   dossier.sousTraitants.forEach((st,si)=>{
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Fiche '+(si+1)+'</strong></div>';
     st.compagnons.forEach((c,i)=>{ h += sigCardHtml(st.id,c,i,false); });
@@ -2768,7 +2768,7 @@ function sigBlockHtml(){
   return h+'</div>';
 }
 function sigBlockQhHtml(){
-  let h = '<div class="sig-zone"><h3>Signatures du 1/4h sécurité</h3><p class="hint">Chaque participant écrit son nom et prénom puis signe au doigt.</p>';
+  let h = '<div class="sig-zone"><h3>Signatures du 1/4h sécurité</h3><p class="hint">Chaque participant écrit son prénom et nom puis signe au doigt.</p>';
   dossier.quartHeure.participants.forEach((c,i)=>{ h += sigCardHtml("QH",c,i,true); });
   h += '<button class="btn secondary" onclick="addComp(\'QH\')">Ajouter un participant</button></div>';
   return h;
@@ -2783,7 +2783,7 @@ function renderStep4(){
   return h;
 }
 function getComps(id){ if(id==="QH") return dossier.quartHeure.participants; const st=dossier.sousTraitants.find(s=>s.id===id); return st?st.compagnons:null; }
-function splitNom(full){ const t=String(full||"").trim().replace(/\s+/g," "); const i=t.indexOf(" "); return i<0?{nom:t,prenom:""}:{nom:t.slice(0,i),prenom:t.slice(i+1)}; }
+function splitNom(full){ const t=String(full||"").trim().replace(/\s+/g," "); const i=t.indexOf(" "); return i<0?{prenom:t,nom:""}:{prenom:t.slice(0,i),nom:t.slice(i+1)}; }
 function updateComp(id,i,k,v){ const cs=getComps(id); if(!cs||!cs[i]) return; const old=cs[i][k]; cs[i][k]=v;
   if(id!=="QH" && k==="nom"){ const q=dossier.quartHeure.participants[i]; if(q && (q.nom===""||q.nom===old)){ q.nom=v; const el=document.getElementById("qhn_"+i); if(el) el.value=v; } } }
 function addComp(id){ const cs=getComps(id); cs.push({prenom:"",nom:"",sig:null}); render(); window.scrollTo(0,document.body.scrollHeight); }
@@ -2804,7 +2804,7 @@ function renderStep5(){
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Intervention '+(si+1)+(t?" : "+esc(t.nom):"")+'</strong></div>';
     st.compagnons.forEach((c,i)=>{
       h += '<div class="st-card"><strong>Compagnon '+(i+1)+'</strong><div>'
-        + '<div class="field"><label>Nom et prénom</label><input type="text" autocomplete="name" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
+        + '<div class="field"><label>Prénom et nom</label><input type="text" autocomplete="name" value="'+esc(c.nom)+'" oninput="updateComp(\''+st.id+'\','+i+',\'nom\',this.value)"></div></div>'
         + '<p class="small-note" style="margin:6px 0 10px;">En signant, je confirme avoir lu et compris les consignes techniques et de sécurité de cette intervention, et je m\'engage à les respecter.</p>'
         + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
         + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
