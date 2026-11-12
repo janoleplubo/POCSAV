@@ -711,6 +711,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .reader iframe.pdf{width:100%;height:100vh;border:0}
   .reader .sig-zone{background:#fff;padding:18px 16px;max-width:1100px;margin:0 auto;border-top:3px solid var(--accent)}
   .reader .row-actions{max-width:1100px;margin:0 auto}
+
+  .mo,.st-card,label.tile,.pick-card,.card,.tile-ico,.menu-btn,.menu-pop,.inline-ai,.err-banner,.success-banner,.gate-card,.btn,.step-pill,.tab-btn,.sigbox,iframe.pdf{border-radius:5px!important}
+  .pick-card,.menu-pop,.gate-card{box-shadow:none!important}
+  .stepper{display:none!important}.stepper-m{display:block!important}
   .backfab{position:fixed;top:10px;left:10px;z-index:60;width:42px;height:42px;border-radius:50%;border:0;background:rgba(30,94,168,.92);color:#fff;font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer}
   .mo b{display:block;font-size:14.5px}
   .mo small{display:block;color:#666;margin-top:2px;font-size:12.5px;line-height:1.35}
@@ -913,7 +917,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V13";
+const SAV_VERSION = "V14";
 function goNext(){
   const keys = activeStepKeys();
   const i = keys.indexOf(currentStep);
@@ -2090,9 +2094,9 @@ function renderTopbar(){
     '<div class="brand"><img src="data:image/png;base64,'+LOGO_SAV_B64+'" alt="Démarrage SAV" style="cursor:pointer;height:30px;width:auto;" title="Retour au début" onclick="goStep(\'chantier\')">'+
       '<div><div class="brand-text">Fiche de suivi d\'intervention</div><div class="brand-sub">Service après-vente</div></div>'+
     '</div>'+
-    (unlocked? '<div class="tb-actions" style="display:flex;gap:8px;"><button class="icon-btn" onclick="newDossier()">＋ Nouvelle fiche</button></div>'+
+    (unlocked? '<div class="tb-actions" style="display:flex;gap:8px;"><button class="icon-btn" onclick="newDossier()">Nouvelle fiche</button></div>'+
       '<div class="tb-menu"><button class="menu-btn" onclick="toggleMenu()" aria-label="Menu">⋯</button>'+
-      (menuOpen? '<div class="menu-pop"><button onclick="menuOpen=false;newDossier()">＋ Nouvelle fiche</button></div>' : '')+
+      (menuOpen? '<div class="menu-pop"><button onclick="menuOpen=false;newDossier()">Nouvelle fiche</button></div>' : '')+
       '</div>' : '')+
   '</div>';
 }
@@ -2140,7 +2144,7 @@ function renderStepSelect(){
   h += '</div>';
   const noneChecked = !dossier.docs.fiche && !dossier.docs.quartHeure;
   if(noneChecked) h += '<div class="error-msg" style="margin-top:12px;">Cochez au moins un document à générer.</div>';
-  h += '<div class="row-actions"><span></span><button class="btn" '+(noneChecked?"disabled":"")+' onclick="goNext()">Continuer →</button></div>';
+  h += '<div class="row-actions"><span></span><button class="btn" '+(noneChecked?"disabled":"")+' onclick="goNext()">Continuer</button></div>';
   h += '</div></div>';
   return h;
 }
@@ -2602,7 +2606,7 @@ function renderStepMateriel(){
 
   h += '<div id="materiel-resultats">'+materielState.outputHtml+'</div>';
 
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><span></span></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour</button><span></span></div>';
   return h;
 }
 
@@ -2644,7 +2648,7 @@ function renderStep1(){
     h += '<div class="field" style="max-width:220px;"><label>Nombre de zones (signalétique)</label><input type="number" min="0" value="'+esc(dossier.nbZones===undefined?1:dossier.nbZones)+'" oninput="updateDossier(\'nbZones\', Math.max(0, parseInt(this.value)||0))"></div>';
     h += '<p class="small-note">Chaque zone reçoit son propre panneau « interdit au public » et « EPI obligatoires ». Mettez 0 si aucun de ces deux panneaux n\'est nécessaire pour ce chantier — la base vie et la zone de stockage restent générées, elles, une seule fois pour tout le chantier.</p>';
   }
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn" onclick="goNext()">Continuer →</button></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour</button><button class="btn" onclick="goNext()">Continuer</button></div>';
   h += '</div>';
   return h;
 }
@@ -2680,10 +2684,10 @@ function renderStep2(){
       h += '<input type="text" placeholder="Produits / matériaux" value="'+esc(st.customProduits||"")+'" oninput="updateST(\''+st.id+'\',\'customProduits\',this.value)">';
       h += '<input type="text" placeholder="Outillage / matériel" value="'+esc(st.customOutillage||"")+'" oninput="updateST(\''+st.id+'\',\'customOutillage\',this.value)">';
       h += '<textarea rows="3" placeholder="Étapes d\'intervention (une par ligne)" oninput="updateST(\''+st.id+'\',\'customEtapes\',this.value)">'+esc(st.customEtapes||"")+'</textarea>';
-      h += '<button class="btn secondary" onclick="addCustomMetier(\''+st.id+'\');st.showCustom=false;render()">＋ Ajouter ce mode opératoire à la fiche</button> ';
+      h += '<button class="btn secondary" onclick="addCustomMetier(\''+st.id+'\');st.showCustom=false;render()">Ajouter ce mode opératoire à la fiche</button> ';
       h += '<button class="btn ghost" onclick="toggleCustom(\''+st.id+'\')">Annuler</button></div>';
     } else {
-      h += '<div style="margin-top:12px;"><button class="btn secondary" onclick="toggleCustom(\''+st.id+'\')">＋ Ajouter un mode opératoire absent de la liste</button></div>';
+      h += '<div style="margin-top:12px;"><button class="btn secondary" onclick="toggleCustom(\''+st.id+'\')">Ajouter un mode opératoire absent de la liste</button></div>';
     }
     if(st.showST){
       h += '<div class="inline-ai" style="margin-top:14px;"><label>Entreprise sous-traitante</label>';
@@ -2692,14 +2696,14 @@ function renderStep2(){
       h += '<input type="tel" placeholder="Téléphone du contact" value="'+esc(st.contactTel)+'" oninput="updateST(\''+st.id+'\',\'contactTel\',this.value)">';
       h += '<button class="btn ghost" onclick="st=dossier.sousTraitants.find(s=>s.id===\''+st.id+'\');st.entreprise=\'\';st.contactNom=\'\';st.contactTel=\'\';toggleST(\''+st.id+'\')">Retirer l\'entreprise</button></div>';
     } else {
-      h += '<div style="margin-top:12px;"><button class="btn secondary" onclick="toggleST(\''+st.id+'\')">＋ Ajouter une entreprise sous-traitante</button></div>';
+      h += '<div style="margin-top:12px;"><button class="btn secondary" onclick="toggleST(\''+st.id+'\')">Ajouter une entreprise sous-traitante</button></div>';
     }
     h += '</div>';
   });
-  h += '<button class="btn secondary" onclick="addSousTraitant()">＋ Ajouter une intervention</button><p class="small-note">Ajoute une fiche complète (autres modes opératoires, autres compagnons) dans le même PDF.</p>';
+  h += '<button class="btn secondary" onclick="addSousTraitant()">Ajouter une intervention</button><p class="small-note">Ajoute une fiche complète (autres modes opératoires, autres compagnons) dans le même PDF.</p>';
   const manque = dossier.sousTraitants.some(s=>!s.metiers.length);
   if(manque) h += '<div class="error-msg" style="margin-top:12px;">Choisissez au moins un mode opératoire pour chaque intervention.</div>';
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn" '+(manque?"disabled":"")+' onclick="goNext()">Continuer vers l\'aperçu →</button></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour</button><button class="btn" '+(manque?"disabled":"")+' onclick="goNext()">Continuer vers l\'aperçu</button></div>';
   h += '</div>';
   return h;
 }
@@ -2738,7 +2742,7 @@ function renderStep3(){
     h += '<div class="field"><label>Particularités du chantier (1 à 2 lignes)</label><textarea rows="2" placeholder="ex. Résidence occupée : prévenir le gardien avant de couper l\'eau." oninput="dossier.quartHeure.siteLine=this.value">'+esc(dossier.quartHeure.siteLine||"")+'</textarea><p class="small-note">Si vous laissez vide, le PDF imprime deux lignes pointillées à remplir à la main.</p></div>';
     h += '</div>';
   }
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn" onclick="goNext()">Continuer →</button></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour</button><button class="btn" onclick="goNext()">Continuer</button></div>';
   h += '</div>';
   return h;
 }
@@ -2759,14 +2763,14 @@ function sigBlockHtml(){
   dossier.sousTraitants.forEach((st,si)=>{
     if(dossier.sousTraitants.length>1) h += '<div class="st-card-head" style="margin-top:12px;"><strong>Fiche '+(si+1)+'</strong></div>';
     st.compagnons.forEach((c,i)=>{ h += sigCardHtml(st.id,c,i,false); });
-    h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">＋ Ajouter un compagnon</button>';
+    h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">Ajouter un compagnon</button>';
   });
   return h+'</div>';
 }
 function sigBlockQhHtml(){
   let h = '<div class="sig-zone"><h3>Signatures du 1/4h sécurité</h3><p class="hint">Chaque participant écrit son nom et prénom puis signe au doigt.</p>';
   dossier.quartHeure.participants.forEach((c,i)=>{ h += sigCardHtml("QH",c,i,true); });
-  h += '<button class="btn secondary" onclick="addComp(\'QH\')">＋ Ajouter un participant</button></div>';
+  h += '<button class="btn secondary" onclick="addComp(\'QH\')">Ajouter un participant</button></div>';
   return h;
 }
 function renderStep4(){
@@ -2775,7 +2779,7 @@ function renderStep4(){
   if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
   if(dossier.docs.fiche){ h += '<div id="pv1" class="pv"></div>'+sigBlockHtml(); }
   if(dossier.docs.quartHeure){ h += '<div id="pv2" class="pv"></div>'+sigBlockQhHtml(); }
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour modifier</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
   return h;
 }
 function getComps(id){ if(id==="QH") return dossier.quartHeure.participants; const st=dossier.sousTraitants.find(s=>s.id===id); return st?st.compagnons:null; }
@@ -2805,9 +2809,9 @@ function renderStep5(){
         + '<label>Signature (au doigt)</label><canvas class="sigbox" id="sig_'+st.id+'_'+i+'"></canvas>'
         + '<div class="sig-actions"><button class="btn ghost" onclick="clearSig(\''+st.id+'\','+i+')">Effacer</button><span class="signed" id="sg_'+st.id+'_'+i+'">'+(c.sig?"Signature enregistrée":"")+'</span></div></div>';
     });
-    h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">＋ Ajouter un compagnon</button>';
+    h += '<button class="btn secondary" onclick="addComp(\''+st.id+'\')">Ajouter un compagnon</button>';
   });
-  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
+  h += '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">Retour</button><button class="btn" onclick="saveSigned()">Enregistrer le PDF signé</button></div></div>';
   return h;
 }
 function initSig(stId, i){
@@ -2927,7 +2931,7 @@ function renderSettings(){
       h += admField('EPI du métier (noms, virgules)','<textarea rows="2" oninput="updateMetierField('+q+',\'epi\',this.value)">'+esc(idsToNames(cur.epi,CONFIG.epi))+'</textarea>');
       h += admField('Risques liés (noms, virgules)','<textarea rows="2" oninput="updateMetierField('+q+',\'risques\',this.value)">'+esc(idsToNames(cur.risques,CONFIG.risques))+'</textarea>');
     }
-    h += '<div><button class="btn secondary" onclick="addMetierRow()">＋ Ajouter un métier</button> <button class="btn ghost" onclick="deleteMetierRow(\''+(cur?cur.id:'')+'\')">Retirer ce métier</button></div></div></div>';
+    h += '<div><button class="btn secondary" onclick="addMetierRow()">Ajouter un métier</button> <button class="btn ghost" onclick="deleteMetierRow(\''+(cur?cur.id:'')+'\')">Retirer ce métier</button></div></div></div>';
   }
   if(settingsTab==="risques"){
     const list = CONFIG.risques, cur = list.find(x=>x.id===selId(list,"risques"));
@@ -2940,7 +2944,7 @@ function renderSettings(){
       h += admField('EPI ajoutés (noms, virgules)','<textarea rows="2" oninput="updateRisqueField('+q+',\'epi\',this.value)">'+esc(idsToNames(cur.epi,CONFIG.epi))+'</textarea>');
       h += admField('Équipements','<input type="text" value="'+esc(cur.equipements)+'" oninput="updateRisqueField('+q+',\'equipements\',this.value)">');
     }
-    h += '<div><button class="btn secondary" onclick="addRisqueRow()">＋ Ajouter un risque</button> <button class="btn ghost" onclick="deleteRisqueRow(\''+(cur?cur.id:'')+'\')">Retirer ce risque</button></div></div></div>';
+    h += '<div><button class="btn secondary" onclick="addRisqueRow()">Ajouter un risque</button> <button class="btn ghost" onclick="deleteRisqueRow(\''+(cur?cur.id:'')+'\')">Retirer ce risque</button></div></div></div>';
   }
   if(settingsTab==="epi"){
     h += '<table class="cfg"><tr><th>Nom</th><th>Statut</th><th></th></tr>';
@@ -2949,7 +2953,7 @@ function renderSettings(){
         td('<select onchange="updateEpiField(\''+e.id+'\',\'statut\',this.value)"><option value="systematique" '+(e.statut==="systematique"?"selected":"")+'>Systématique</option><option value="conditionnel" '+(e.statut==="conditionnel"?"selected":"")+'>Conditionnel</option></select>')+
         td('<button class="btn ghost" onclick="deleteEpiRow(\''+e.id+'\')">✕</button>')+'</tr>';
     });
-    h += '</table><button class="btn secondary" onclick="addEpiRow()">＋ Ajouter un EPI</button>';
+    h += '</table><button class="btn secondary" onclick="addEpiRow()">Ajouter un EPI</button>';
   }
   if(settingsTab==="qh"){
     const items = QH_GROUPS.map((g,i)=>({id:"g"+i, nom:"Groupe "+(i+1)+" — "+g.nom, kind:"g", i:i}))
