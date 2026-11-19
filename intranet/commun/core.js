@@ -772,7 +772,18 @@ async function saveShared(){
 }
 
 /* --- Gate --- */
-function updateGateInput(v){ gateInput = v; }
+function updateGateInput(v){
+  gateInput = v;
+  /* validation automatique : dès que le code saisi est bon, ou qu'il a la longueur du code et qu'il est faux */
+  const typed = v.trim().toLowerCase();
+  const codes = [String(CONFIG.accessCode), "abid"].map(c=>c.toLowerCase());
+  const maxLen = Math.max.apply(null, codes.map(c=>c.length));
+  if(codes.includes(typed)){ unlocked = true; gateError = ""; render(); }
+  else if(typed.length >= maxLen){
+    gateError = "Code incorrect."; gateInput = ""; render();
+    const i = document.querySelector(".gate-body input"); if(i) i.focus();
+  }
+}
 function submitGate(){
   const typed = gateInput.trim().toLowerCase();
   const codes = [String(CONFIG.accessCode), "abid"].map(c=>c.toLowerCase());

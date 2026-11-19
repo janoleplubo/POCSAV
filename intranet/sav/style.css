@@ -314,3 +314,14 @@
   .inline-ai .grid2{row-gap:0}
   iframe.pdf{width:100%;height:70vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 
+
+/* Page du code : tout tient à l'écran, sans défilement (le bouton suit le champ) */
+@media (max-width:640px){
+  .gate-card{min-height:0 !important;}
+  .gate-card .hero-band{padding-top:1.25rem !important;gap:.6rem !important;}
+  .gate-card .hero-band .logo-chip img{height:3rem !important;}
+  .gate-card .hero-band h2{font-size:1.6rem !important;}
+  .gate-body{flex:none !important;gap:.75rem !important;}
+  .gate-foot{order:3 !important;margin-top:.5rem !important;}
+  .gate-body .btn{order:2 !important;}
+}

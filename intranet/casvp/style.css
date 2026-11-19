@@ -295,3 +295,24 @@ label.tile.sel .tile-ico{background:transparent!important;color:var(--accent)!im
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
   .sig-zone{margin-top:18px;padding-top:14px;border-top:3px solid var(--accent)}
   .sig-zone h3{margin:0 0 6px;font-size:18px}
+
+/* Page du code : tout tient à l'écran, sans défilement (le bouton suit le champ) */
+@media (max-width:640px){
+  .gate-card{min-height:0 !important;}
+  .gate-card .hero-band{padding-top:1.25rem !important;gap:.6rem !important;}
+  .gate-card .hero-band .logo-chip img{height:3rem !important;}
+  .gate-card .hero-band h2{font-size:1.6rem !important;}
+  .gate-body{flex:none !important;gap:.75rem !important;}
+  .gate-foot{order:3 !important;margin-top:.5rem !important;}
+  .gate-body .btn{order:2 !important;}
+}
+
+/* Bloc « métier absent » : espacement régulier, plus de marges perdues à gauche/droite (téléphone) */
+.inline-ai{display:flex;flex-direction:column;gap:10px}
+.inline-ai .grid2{gap:10px}
+.inline-ai textarea{margin:0;min-height:5.5rem}
+.inline-ai .btn{margin-top:0 !important}
+@media (max-width:640px){
+  .st-card{padding:.75rem !important;}
+  .inline-ai{padding:.6rem .5rem !important;margin-left:-.25rem;margin-right:-.25rem}
+}

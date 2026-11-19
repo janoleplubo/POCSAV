@@ -134,7 +134,7 @@ const STEP_LABELS = {
   select: "Documents", chantier: "Chantier", "sous-traitants": "Modes opératoires", apercu: "Aperçu", pdf: "PDF et signatures"
 };
 function activeStepKeys(){ return dossier.docs.fiche ? ["select","chantier","sous-traitants","apercu","pdf"] : ["select","chantier","apercu","pdf"]; }
-const SAV_VERSION = "V15";
+const SAV_VERSION = "V16";
 function computePreview(st){
   const metiers = CONFIG.corpsDeMetier.filter(m => st.metiers.includes(m.id));
   const natureM = metiers.filter(m=>m.nature);
@@ -523,7 +523,7 @@ function renderStep3(){
   h += '</div>';
   return h;
 }
-let lastPdfBlob = null, signedDone = false;
+let lastPdfBlob = null, signedDone = false, pdfMode = null; /* pdfMode : null (choix), "print" (à imprimer) ou "sign" (à signer) */
 function sigCardHtml(id,c,i,qh){
   return '<div class="st-card"><strong>'+(qh?'Participant ':'Compagnon ')+(i+1)+'</strong><div>'
     + '<div class="field"><label>Prénom et nom</label><input type="text" autocomplete="name" '+(qh?'id="qhn_'+i+'" ':'')+'value="'+esc(c.nom)+'" oninput="updateComp(\''+id+'\','+i+',\'nom\',this.value)"></div></div>'
@@ -546,8 +546,28 @@ function sigBlockQhHtml(){
   h += '<button class="btn secondary" onclick="addComp(\'QH\')">Ajouter un participant</button></div>';
   return h;
 }
+function renderPdfChoice(){
+  return '<div class="card"><h2>Quel PDF voulez-vous ?</h2>'
+    + '<p class="hint">Dans les deux cas, le PDF contient la même fiche. Seule la façon de signer change.</p>'
+    + '<button class="btn" style="width:100%;margin-bottom:6px;" onclick="choosePdf(\'print\')">PDF à imprimer</button>'
+    + '<p class="small-note" style="margin:0 0 16px;">Sans signatures : on imprime puis on fait signer à la main.</p>'
+    + '<button class="btn" style="width:100%;margin-bottom:6px;" onclick="choosePdf(\'sign\')">PDF à signer</button>'
+    + '<p class="small-note" style="margin:0 0 6px;">Les compagnons signent au doigt sur l\'écran, le PDF signé est prêt à envoyer.</p>'
+    + '<div class="row-actions"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button></div></div>';
+}
+function choosePdf(mode){ pdfMode = mode; generatePdf(false); window.scrollTo(0,0); render(); }
+function renderPrintResult(){
+  return '<div class="card"><h2>PDF prêt à imprimer</h2>'+(genMessage?'<div class="err-banner">'+esc(genMessage.text)+'</div>':'<div class="success-banner">'+esc(lastPdfFilename)+'</div>')
+    + '<button class="btn" style="width:100%;margin-bottom:10px;" onclick="sharePdf()">Partager par mail</button>'
+    + '<button class="btn secondary" style="width:100%;" onclick="dlPdf()">Télécharger le PDF</button>'
+    + '<p class="small-note">« Partager » ouvre le menu du téléphone : choisissez votre messagerie, le PDF part en pièce jointe.</p>'
+    + '<div id="pv" class="pv" style="margin-top:12px;"></div>'
+    + '<div class="row-actions"><button class="btn secondary" onclick="pdfMode=null;render()">← Changer de choix</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
+}
 function renderStep4(){
   if(signedDone) return renderStep5();
+  if(!pdfMode) return renderPdfChoice();
+  if(pdfMode==="print") return renderPrintResult();
   let h = '<div class="card pdfcard"><h2>PDF et signatures</h2>';
   if(genMessage) h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
   if(dossier.docs.fiche){ h += '<div id="pv1" class="pv"></div>'+sigBlockHtml(); }
@@ -567,7 +587,7 @@ function renderStep5(){
       + '<button class="btn secondary" style="width:100%;" onclick="dlPdf()">Télécharger le PDF</button>'
       + '<p class="small-note">« Partager » ouvre le menu du téléphone : choisissez votre messagerie, le PDF part en pièce jointe.</p>'
       + '<div id="pv" class="pv" style="margin-top:12px;"></div>'
-      + '<div class="row-actions"><button class="btn secondary" onclick="signedDone=false;generatePdf(false);render()">← Revoir les signatures</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
+      + '<div class="row-actions"><button class="btn secondary" onclick="signedDone=false;pdfMode="sign";generatePdf(false);render()">← Revoir les signatures</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div></div>';
     return h;
   }
   h += '<div class="card"><h2>Signatures des compagnons</h2><p class="hint">'+esc(CONFIG.textes.attestation)+' Chacun écrit son nom puis signe au doigt.</p>';
@@ -635,7 +655,7 @@ async function showPdf(){
 function dlPdf(){ const a=document.createElement("a"); a.href=lastPdfUrl; a.download=lastPdfFilename; document.body.appendChild(a); a.click(); a.remove(); }
 async function sharePdf(){
   try{ const file=new File([lastPdfBlob],lastPdfFilename,{type:"application/pdf"});
-    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"Fiche de suivi d'intervention SAV",text:"Fiche de suivi d'intervention SAV signée."}); return; }
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"Fiche de suivi d'intervention SAV",text:"Fiche de suivi d'intervention SAV"+(/_signee/.test(lastPdfFilename)?" signée":"")+"."}); return; }
   }catch(e){ if(e&&e.name==="AbortError") return; }
   dlPdf(); location.href="mailto:?subject="+encodeURIComponent("Fiche de suivi d'intervention SAV")+"&body="+encodeURIComponent("Bonjour,\n\nVeuillez trouver ci-joint la fiche de suivi d'intervention SAV signée (fichier téléchargé : "+lastPdfFilename+").");
 }
@@ -657,7 +677,7 @@ function generatePdf(withSigs){
 }
 function goStep(key){
   if(key==="apercu"){ dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); }); ensureThemes(); }
-  if(key==="pdf") generatePdf(false);
+  if(key==="pdf") pdfMode = null;
   if(key==="pdf"){ signedDone=false; { const n=Math.max(1,parseInt(dossier.nbComp)||1); while(dossier.quartHeure.participants.length<n) dossier.quartHeure.participants.push({prenom:"",nom:"",sig:null}); } dossier.sousTraitants.forEach(st=>{ const n=Math.max(1,parseInt(dossier.nbComp)||1); while(st.compagnons.length<n) st.compagnons.push({prenom:"",nom:"",sig:null}); }); }
   currentStep = key; if(key!=="pdf") genMessage=null; window.scrollTo(0,0); render();
 }
@@ -743,14 +763,14 @@ function renderSettings(){
 function render(){
   const app = document.getElementById("app");
   if(!CONFIG){ app.innerHTML = "Chargement…"; return; }
-  const reader = unlocked && currentStep==="pdf" && !signedDone;
+  const reader = unlocked && currentStep==="pdf" && pdfMode==="sign" && !signedDone;
   let html = reader ? "" : renderTopbar();
   if(!unlocked){
     html += renderGate();
   } else if(settingsOpen){
     html += '<main>'+renderSettings()+'</main>';
   } else {
-    html += '<main>'+(reader?'<button class="backfab" onclick="goPrev()">←</button>':renderStepper());
+    html += '<main>'+(reader?'<button class="backfab" onclick="pdfMode=null;render()">←</button>':renderStepper());
     if(currentStep==="select") html += renderStepSelect();
     if(currentStep==="chantier") html += renderStep1();
     if(currentStep==="sous-traitants") html += renderStep2();
@@ -762,8 +782,8 @@ function render(){
   app.className = reader ? "reader" : "";
   app.innerHTML = html;
   autosizeAll();
-  if(unlocked && currentStep==="pdf") showPdf();
-  if(unlocked && currentStep==="pdf" && !signedDone) { if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i))); if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((c,i)=>initSig("QH",i)); }
+  if(unlocked && currentStep==="pdf" && (pdfMode || signedDone)) showPdf();
+  if(unlocked && currentStep==="pdf" && pdfMode==="sign" && !signedDone) { if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>st.compagnons.forEach((c,i)=>initSig(st.id,i))); if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((c,i)=>initSig("QH",i)); }
 }
 
 /* =========================================================================
