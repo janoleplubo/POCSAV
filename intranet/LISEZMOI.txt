@@ -1,0 +1,44 @@
+PARIS OUEST CONSTRUCTION - OUTILS CHANTIER (CASVP + SAV)
+=========================================================
+
+INSTALLER SUR L'INTRANET
+  1. Copier tout ce dossier (index.html, commun/, casvp/, sav/) sur le serveur web.
+  2. Ouvrir index.html : il propose les deux applis.
+  Aucun logiciel, aucune base de données, aucun serveur spécial : ce sont des fichiers statiques.
+  Il faut que les dossiers restent ensemble (les applis utilisent le dossier commun/).
+
+CONTENU
+  commun/jspdf.js     Bibliothèque de fabrication du PDF (tierce, licence MIT)
+  commun/core.js      Code partagé : saisie, signatures, réglages admin, enregistrement
+  commun/doc.js       Fabrication du PDF (classe Doc), identique pour toutes les applis
+  commun/signpad.js   Zone de signature au doigt + outils (prénom/nom, image dans le PDF)
+  commun/images.js    Images partagées (panneaux d'affichage)
+  casvp/              Appli CASVP : app.js (spécifique), style.css (orange), images.js (logo),
+                      reglages-config.js (où sont les réglages, place réservée dans le PDF), start.js (démarrage)
+                      signatures.js (CASVP : écran de signatures, PDF seul ou avec signatures)
+  sav/                Appli SAV : mêmes fichiers, spécifiques au SAV (bleu)
+
+OÙ MODIFIER QUOI
+  Un bug de signature ou de réglages  -> commun/core.js (profite aux deux applis)
+  La fabrication du PDF (bandeaux, tableaux, signatures) -> commun/doc.js (profite aux deux applis)
+  Un texte, un modop, le contenu des pages PDF d'une appli -> casvp/app.js ou sav/app.js
+  Les couleurs                          -> style.css de l'appli
+  Un logo                               -> images.js de l'appli
+  Les métiers, EPI, textes, modops      -> inutile de toucher au code : mode admin (bouton Réglages)
+
+MODE ADMIN
+  Même fonctionnement pour les deux applis, mais chacune a ses propres réglages.
+  Les réglages sont enregistrés dans un fichier reglages.json placé à côté de index.html de l'appli.
+  Sur GitHub, l'enregistrement se fait par une clé personnelle (token) propre à chaque dépôt.
+  Sur l'intranet : voir "A DECIDER AVEC L'INFORMATIQUE" ci-dessous.
+
+A DECIDER AVEC L'INFORMATIQUE
+  - Les réglages partagés : sur GitHub, l'appli écrit reglages.json via l'API GitHub.
+    Sur un serveur interne, il faudra soit un petit script d'enregistrement, soit garder les
+    réglages en lecture seule (modifiés par un fichier reglages.json déposé à la main).
+  - La visionneuse de PDF (pdf.js) est chargée depuis internet (cdnjs). Si l'intranet est
+    coupé d'internet, il faut déposer cette bibliothèque dans commun/ (à faire).
+  - Hébergement : le code n'envoie aucune donnée nulle part ; le PDF est fabriqué sur l'appareil.
+
+VERSIONS EN LIGNE ACTUELLES (non modifiées)
+  CASVP : https://janoleplubo.github.io/POCADMIN/   SAV : https://janoleplubo.github.io/POCSAV/
