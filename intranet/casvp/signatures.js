@@ -11,10 +11,8 @@ function startSigning(){
   const pres = (qh.presentateur || dossier.cdtNom || "").trim();
   if(!qh.participants.length){
     /* 1re ligne : le présentateur (nom déjà saisi, modifiable), puis un participant par ouvrier déclaré */
-    qh.participants.push({nom:pres, entreprise:"Paris Ouest Construction", sig:null, pres:true});
+    qh.participants.push({nom:"", entreprise:"Paris Ouest Construction", sig:null, pres:true});
     if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ const n=Math.min(30, parseInt(st.nbOuvriers)||0); for(let i=0;i<n;i++) qh.participants.push({nom:"", entreprise:st.entreprise||"", sig:null}); });
-  } else if(qh.participants[0] && qh.participants[0].pres && !String(qh.participants[0].nom||"").trim()){
-    qh.participants[0].nom = pres;
   }
   if(generatePdf(false, true) === false){ render(); return; }  /* aperçu des documents à signer, sans signatures */
   pdfReady = false; signMode = true; genMessage = null; window.scrollTo(0,0); render();
@@ -41,7 +39,7 @@ function renderSignatures(){
         + sigBox("sigst_"+st.id, !!st.sigEnt, "signPadClear('sigst_"+st.id+"',v=>{sigStSet('"+st.id+"','sigEnt',v);document.getElementById('sigst_"+st.id+"_ok').textContent=''})")
         + '</div>';
     });
-    h += '<div class="st-card"><strong>Le conducteur de travaux'+(dossier.cdtNom?' — '+esc(dossier.cdtNom):'')+'</strong>'
+    h += '<div class="st-card"><strong>Le conducteur de travaux'+'</strong>'
       + sigBox("sigcdt", !!dossier.sigCdt, "signPadClear('sigcdt',v=>{dossier.sigCdt=v;document.getElementById('sigcdt_ok').textContent=''})")
       + '<p class="small-note">Cette signature sera reprise sur toutes les fiches.</p></div></div>';
   }
@@ -76,7 +74,7 @@ function finishSigning(){
   const manque = [];
   if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ if(!st.sigEnt||!(st.sigNom||"").trim()) manque.push("signataire "+(st.entreprise||"entreprise")); });
   if(dossier.docs.fiche && !dossier.sigCdt) manque.push("conducteur");
-  if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((q,i)=>{ if(!q.sig||!(q.nom||"").trim()) manque.push("participant "+(i+1)); });
+  if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((q,i)=>{ if(!q.sig||(!q.pres&&!(q.nom||"").trim())) manque.push("participant "+(i+1)); });
   if(manque.length && !confirm(manque.length+" signature(s) ou nom(s) manquant(s) : "+manque.join(", ")+". Générer quand même ?")) return;
   signMode = false; generatePdf(true);
 }
