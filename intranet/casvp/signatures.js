@@ -15,7 +15,7 @@ function startSigning(){
     qh.participants[0].nom = pres;
   }
   if(generatePdf(false, true) === false){ render(); return; }  /* aperçu des documents à signer, sans signatures */
-  signMode = true; genMessage = null; window.scrollTo(0,0); render();
+  pdfReady = false; signMode = true; genMessage = null; window.scrollTo(0,0); render();
 }
 function stopSigning(){ signMode = false; window.scrollTo(0,0); render(); }
 function stById(id){ return dossier.sousTraitants.find(s=>s.id===id); }

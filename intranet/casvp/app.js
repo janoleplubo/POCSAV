@@ -360,7 +360,25 @@ function autoOpenPdf(url, filename){
   try{ window.open(url, "_blank"); }catch(e){}
 }
 
-let pdfRanges = { st:{}, qh:null }, lastPdfBlob = null;
+let pdfRanges = { st:{}, qh:null }, lastPdfBlob = null, pdfReady = false;
+/* Nom du fichier : « 1-4 dh sécurité 1466-44 JB » (type de document, n° d'affaire, initiales du conducteur) */
+function pdfFileName(){
+  const d = dossier.docs, nb = [d.fiche,d.quartHeure,d.urgence,d.affichages].filter(Boolean).length;
+  const type = nb>1 ? "Démarrage chantier" : d.quartHeure ? "1-4 dh sécurité" : d.fiche ? "Fiche 1ère intervention" : d.urgence ? "Fiche d'urgence" : d.affichages ? "Affichages chantier" : "Démarrage chantier";
+  const ref = (dossier.affaire||"").trim() || (dossier.nomChantier||"").trim();
+  const ini = (dossier.cdtNom||"").trim().split(/\s+/).filter(Boolean).map(w=>w[0].toUpperCase()).join("");
+  const name = [type, ref, ini].filter(Boolean).join(" ") + (pdfWithSigs ? " signé" : "");
+  return name.replace(/[\\/:*?"<>|]+/g,"-").replace(/\s+/g," ").trim();
+}
+async function sharePdf(){
+  const name = lastPdfFilename.replace(/\.pdf$/i,"");
+  try{
+    const file = new File([lastPdfBlob], lastPdfFilename, {type:"application/pdf"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name, text:name}); return; }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  dlPdf(); location.href = "mailto:?subject="+encodeURIComponent(name)+"&body="+encodeURIComponent("Bonjour,\n\nVeuillez trouver ci-joint : "+name+" (fichier téléchargé sur votre appareil, à joindre).\n\nCordialement,\n"+(dossier.cdtNom||""));
+}
+function dlPdf(){ const a=document.createElement("a"); a.href=lastPdfUrl; a.download=lastPdfFilename; document.body.appendChild(a); a.click(); a.remove(); }
 function generatePdf(withSigs, previewOnly){
   pdfWithSigs = !!withSigs;
   try{
@@ -381,17 +399,15 @@ function generatePdf(withSigs, previewOnly){
     if(dossier.docs.urgence) renderUrgence(D);
     if(dossier.docs.affichages) renderSignagePages(pdf, D.pageNum===0);
 
-    const safeAffaire = ([dossier.affaire, dossier.nomChantier].filter(x=>x&&x.trim()).join("_")||"chantier").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\-]+/gi,"_").replace(/^_+|_+$/g,"");
-    const filename = "Demarrage_chantier_"+safeAffaire+(pdfWithSigs?"_signe":"")+".pdf";
+    const filename = pdfFileName() + ".pdf";
     const blob = pdf.output("blob");
     if(lastPdfUrl) URL.revokeObjectURL(lastPdfUrl);
     lastPdfUrl = URL.createObjectURL(blob);
     lastPdfBlob = blob;
     lastPdfFilename = filename;
     if(previewOnly) return true;
-    autoOpenPdf(lastPdfUrl, filename);
-
-    genMessage = {type:"success", text:"PDF téléchargé et ouvert. S'il ne s'est pas ouvert, utilisez le bouton ci-dessous."};
+    pdfReady = true;
+    genMessage = {type:"success", text:"PDF prêt : "+filename};
   }catch(e){
     console.error(e);
     genMessage = {type:"error", text:"Une erreur est survenue pendant la génération : "+e.message};
@@ -628,10 +644,14 @@ function renderStep4(){
   if(genMessage){
     h += '<div class="'+(genMessage.type==="error"?"err-banner":"success-banner")+'">'+esc(genMessage.text)+'</div>';
   }
-  h += '<div class="gen-choice" style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn" onclick="generatePdf()">⚙ PDF seul (à imprimer)</button><button class="btn secondary" onclick="startSigning()">✍ PDF avec signatures</button></div>';
-  if(lastPdfUrl){
-    h += '<div style="margin-top:14px;"><a class="btn" style="display:inline-block;text-decoration:none;" href="'+lastPdfUrl+'" download="'+esc(lastPdfFilename)+'" target="_blank" rel="noopener">⬇ Ouvrir / télécharger le PDF</a></div>';
-    h += '<p class="small-note">Sur mobile, si un simple appui n\'ouvre rien, essayez un appui long sur le bouton puis « Télécharger le lien » / « Ouvrir dans un nouvel onglet ».</p>';
+  if(pdfReady && lastPdfBlob){
+    h += '<button class="btn" style="width:100%;margin:6px 0 10px;" onclick="sharePdf()">✉ Partager par mail</button>';
+    h += '<button class="btn secondary" style="width:100%;" onclick="dlPdf()">⬇ Télécharger le PDF</button>';
+    h += '<p class="small-note">« Partager » ouvre le menu du téléphone : choisissez votre messagerie ou Drive, le PDF part en pièce jointe avec son nom.</p>';
+    h += '<div id="pvfinal" class="pv" style="margin-top:12px;"></div>';
+    h += '<details style="margin-top:12px;"><summary>Refaire le PDF</summary><div class="gen-choice" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><button class="btn secondary" onclick="generatePdf()">⚙ PDF seul (à imprimer)</button><button class="btn secondary" onclick="startSigning()">✍ PDF avec signatures</button></div></details>';
+  } else {
+    h += '<div class="gen-choice" style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn" onclick="generatePdf()">⚙ PDF seul (à imprimer)</button><button class="btn secondary" onclick="startSigning()">✍ PDF avec signatures</button></div>';
   }
   h += '<div class="row-actions" style="margin-top:20px;"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div>';
   h += '</div>';
@@ -732,7 +752,8 @@ function render(){
     html += '<div class="footer-note">Paris Ouest Construction — outil interne créé par Jean Bourdel pour l\'équipe CASVP. Ne pas diffuser en dehors de l\'équipe. <span style="opacity:.7">Version 83 · web et mobile · 12/11/2026</span></div>';
   }
   app.innerHTML = html;
-  if(currentStep!=="pdf") signMode = false;
+  if(currentStep!=="pdf"){ signMode = false; pdfReady = false; }
+  if(currentStep==="pdf" && pdfReady && !signMode && lastPdfBlob) pdfShowPages(lastPdfBlob, lastPdfUrl, [{boxId:"pvfinal", from:1, to:999}]);
   if(signMode && currentStep==="pdf") initSignatures();
 }
 
