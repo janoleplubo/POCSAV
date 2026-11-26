@@ -189,6 +189,7 @@ function activeStepKeys(){
 }
 function goStep(key){
   if(key==="apercu" && !dossier.quartHeure.presentateur) dossier.quartHeure.presentateur = dossier.cdtNom || "";
+  if(key==="apercu" && !dossier.quartHeure.supportPar) dossier.quartHeure.supportPar = dossier.cdtNom || "";
   if(key==="apercu"){
     if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); });
     ensureThemes();
@@ -424,7 +425,7 @@ function generatePdf(withSigs, previewOnly){
    ========================================================================= */
 function updateDossier(field, value){
   /* le nom du conducteur est saisi une seule fois : il pré-remplit le présentateur du 1/4h (modifiable) */
-  if(field==="cdtNom"){ const q=dossier.quartHeure; if(!q.presentateur || q.presentateur===dossier.cdtNom) q.presentateur = value; }
+  if(field==="cdtNom"){ const q=dossier.quartHeure; if(!q.presentateur || q.presentateur===dossier.cdtNom) q.presentateur = value; if(!q.supportPar || q.supportPar===dossier.cdtNom) q.supportPar = value; }
   dossier[field] = value;
 }
 function renderTopbar(){
