@@ -316,3 +316,6 @@ label.tile.sel .tile-ico{background:transparent!important;color:var(--accent)!im
   .st-card{padding:.75rem !important;}
   .inline-ai{padding:.6rem .5rem !important;margin-left:-.25rem;margin-right:-.25rem}
 }
+
+/* aperçu du document au-dessus des signatures */
+.pv canvas{width:100%;height:auto;border:1px solid var(--border);border-radius:5px;margin-bottom:10px;background:#fff;display:block}

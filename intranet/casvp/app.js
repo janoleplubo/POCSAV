@@ -188,6 +188,7 @@ function activeStepKeys(){
   return keys;
 }
 function goStep(key){
+  if(key==="apercu" && !dossier.quartHeure.presentateur) dossier.quartHeure.presentateur = dossier.cdtNom || "";
   if(key==="apercu"){
     if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); });
     ensureThemes();
@@ -359,7 +360,8 @@ function autoOpenPdf(url, filename){
   try{ window.open(url, "_blank"); }catch(e){}
 }
 
-function generatePdf(withSigs){
+let pdfRanges = { st:{}, qh:null }, lastPdfBlob = null;
+function generatePdf(withSigs, previewOnly){
   pdfWithSigs = !!withSigs;
   try{
     if(!window.jspdf){ genMessage = {type:"error", text:"La bibliothèque PDF ne s'est pas chargée (vérifiez la connexion), réessayez."}; render(); return; }
@@ -373,8 +375,9 @@ function generatePdf(withSigs){
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit:"mm", format:"a4" });
     const D = new Doc(pdf);
-    if(dossier.docs.fiche) dossier.sousTraitants.forEach((st,i)=> renderFicheIntervention(D, st, i));
-    if(dossier.docs.quartHeure) renderQuartHeure(D);
+    pdfRanges = { st:{}, qh:null };
+    if(dossier.docs.fiche) dossier.sousTraitants.forEach((st,i)=>{ const a=D.pageNum+1; renderFicheIntervention(D, st, i); pdfRanges.st[st.id]=[a, D.pageNum]; });
+    if(dossier.docs.quartHeure){ const a=D.pageNum+1; renderQuartHeure(D); pdfRanges.qh=[a, D.pageNum]; }
     if(dossier.docs.urgence) renderUrgence(D);
     if(dossier.docs.affichages) renderSignagePages(pdf, D.pageNum===0);
 
@@ -383,13 +386,16 @@ function generatePdf(withSigs){
     const blob = pdf.output("blob");
     if(lastPdfUrl) URL.revokeObjectURL(lastPdfUrl);
     lastPdfUrl = URL.createObjectURL(blob);
+    lastPdfBlob = blob;
     lastPdfFilename = filename;
+    if(previewOnly) return true;
     autoOpenPdf(lastPdfUrl, filename);
 
     genMessage = {type:"success", text:"PDF téléchargé et ouvert. S'il ne s'est pas ouvert, utilisez le bouton ci-dessous."};
   }catch(e){
     console.error(e);
     genMessage = {type:"error", text:"Une erreur est survenue pendant la génération : "+e.message};
+    if(previewOnly) return false;
   }
   render();
 }
@@ -398,7 +404,11 @@ function generatePdf(withSigs){
 /* =========================================================================
    ACTIONS UI (exposées en global pour les attributs onclick/oninput)
    ========================================================================= */
-function updateDossier(field, value){ dossier[field] = value; }
+function updateDossier(field, value){
+  /* le nom du conducteur est saisi une seule fois : il pré-remplit le présentateur du 1/4h (modifiable) */
+  if(field==="cdtNom"){ const q=dossier.quartHeure; if(!q.presentateur || q.presentateur===dossier.cdtNom) q.presentateur = value; }
+  dossier[field] = value;
+}
 function renderTopbar(){
   return '<div class="topbar'+(unlocked?'':' gate-top')+'">'+
     '<div class="brand"><img src="data:image/png;base64,'+LOGO_BOX_B64+'" alt="Démarrage de chantier" style="cursor:pointer;height:28px;width:auto;" title="Retour au menu" onclick="goStep(\'select\')">'+

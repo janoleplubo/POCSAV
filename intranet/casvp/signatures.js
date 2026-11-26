@@ -6,10 +6,15 @@ function sigToday(){ const d=new Date(); return String(d.getDate()).padStart(2,"
 function startSigning(){
   // participants du 1/4h : pré-remplis avec l'effectif de chaque entreprise (une seule fois)
   const qh = dossier.quartHeure; if(!qh.participants) qh.participants = [];
+  const pres = (qh.presentateur || dossier.cdtNom || "").trim();
   if(!qh.participants.length){
-    dossier.sousTraitants.forEach(st=>{ const n=Math.min(30, parseInt(st.nbOuvriers)||0); for(let i=0;i<n;i++) qh.participants.push({nom:"", entreprise:st.entreprise||"", sig:null}); });
-    if(!qh.participants.length) qh.participants.push({nom:"", entreprise:"", sig:null});
+    /* 1re ligne : le présentateur (nom déjà saisi, modifiable), puis un participant par ouvrier déclaré */
+    qh.participants.push({nom:pres, entreprise:"Paris Ouest Construction", sig:null, pres:true});
+    if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ const n=Math.min(30, parseInt(st.nbOuvriers)||0); for(let i=0;i<n;i++) qh.participants.push({nom:"", entreprise:st.entreprise||"", sig:null}); });
+  } else if(qh.participants[0] && qh.participants[0].pres && !String(qh.participants[0].nom||"").trim()){
+    qh.participants[0].nom = pres;
   }
+  if(generatePdf(false, true) === false){ render(); return; }  /* aperçu des documents à signer, sans signatures */
   signMode = true; genMessage = null; window.scrollTo(0,0); render();
 }
 function stopSigning(){ signMode = false; window.scrollTo(0,0); render(); }
@@ -29,6 +34,7 @@ function renderSignatures(){
     h += '<div class="sig-zone"><h3>Fiches de 1ère intervention</h3><p class="hint">'+esc(CONFIG.textes.attestation)+'</p>';
     dossier.sousTraitants.forEach((st,i)=>{
       h += '<div class="st-card"><strong>'+esc(st.entreprise||("Sous-traitant "+(i+1)))+'</strong>'
+        + '<p class="hint">Lisez la fiche ci-dessous avant de signer :</p><div class="pv" id="pvst_'+st.id+'"></div>'
         + '<div class="field"><label>Prénom et nom du signataire (pour ses compagnons)</label><input type="text" autocomplete="name" value="'+esc(st.sigNom||"")+'" oninput="sigStSet(\''+st.id+'\',\'sigNom\',this.value)"></div>'
         + sigBox("sigst_"+st.id, !!st.sigEnt, "signPadClear('sigst_"+st.id+"',v=>{sigStSet('"+st.id+"','sigEnt',v);document.getElementById('sigst_"+st.id+"_ok').textContent=''})")
         + '</div>';
@@ -38,7 +44,7 @@ function renderSignatures(){
       + '<p class="small-note">Cette signature sera reprise sur toutes les fiches.</p></div></div>';
   }
   if(dossier.docs.quartHeure){
-    h += '<div class="sig-zone"><h3>1/4h sécurité — émargement</h3><p class="hint">Chaque participant écrit son prénom et nom, puis signe au doigt.</p>';
+    h += '<div class="sig-zone"><h3>1/4h sécurité — émargement</h3><p class="hint">Lisez le document ci-dessous avant de signer.</p><div class="pv" id="pvqh"></div><p class="hint">Chaque participant écrit son prénom et nom, puis signe au doigt.</p>';
     dossier.quartHeure.participants.forEach((q,i)=>{
       h += '<div class="st-card"><strong>Participant '+(i+1)+'</strong>'
         + '<div class="row2"><div class="field"><label>Prénom et nom</label><input type="text" autocomplete="name" value="'+esc(q.nom)+'" oninput="sigPartSet('+i+',\'nom\',this.value)"></div>'
@@ -58,6 +64,11 @@ function initSignatures(){
     signPadInit("sigcdt", dossier.sigCdt, v=>{ dossier.sigCdt=v; ok("sigcdt"); });
   }
   if(dossier.docs.quartHeure) dossier.quartHeure.participants.forEach((q,i)=>signPadInit("sigqh_"+i, q.sig, v=>{ q.sig=v; ok("sigqh_"+i); }));
+  /* documents lus au-dessus des signatures */
+  const jobs = [];
+  if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ const r=pdfRanges.st[st.id]; if(r) jobs.push({boxId:"pvst_"+st.id, from:r[0], to:r[1]}); });
+  if(dossier.docs.quartHeure && pdfRanges.qh) jobs.push({boxId:"pvqh", from:pdfRanges.qh[0], to:pdfRanges.qh[1]});
+  if(jobs.length && lastPdfBlob) pdfShowPages(lastPdfBlob, lastPdfUrl, jobs).then(()=>{ /* les canvas de signature ont déjà leur taille : rien à refaire */ });
 }
 function finishSigning(){
   const manque = [];
