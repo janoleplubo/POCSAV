@@ -3,7 +3,9 @@
 let signMode = false;
 function sigToday(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear(); }
 
+let sigPrior=false;
 function startSigning(){
+  sigPrior = pdfWithSigs;
   // participants du 1/4h : pré-remplis avec l'effectif de chaque entreprise (une seule fois)
   const qh = dossier.quartHeure; if(!qh.participants) qh.participants = [];
   const pres = (qh.presentateur || dossier.cdtNom || "").trim();
@@ -17,7 +19,7 @@ function startSigning(){
   if(generatePdf(false, true) === false){ render(); return; }  /* aperçu des documents à signer, sans signatures */
   pdfReady = false; signMode = true; genMessage = null; window.scrollTo(0,0); render();
 }
-function stopSigning(){ signMode = false; window.scrollTo(0,0); render(); }
+function stopSigning(){ signMode = false; window.scrollTo(0,0); generatePdf(sigPrior); }
 function stById(id){ return dossier.sousTraitants.find(s=>s.id===id); }
 function sigStSet(id, field, v){ const st=stById(id); if(st) st[field]=v; }
 function sigPartSet(i, field, v){ const p=dossier.quartHeure.participants[i]; if(p) p[field]=v; }
@@ -29,7 +31,7 @@ function sigBox(id, hasSig, clearCall){
     + '<div class="sig-actions"><button class="btn ghost" onclick="'+clearCall+'">Effacer</button><span class="signed" id="'+id+'_ok">'+(hasSig?"Signature enregistrée":"")+'</span></div>';
 }
 function renderSignatures(){
-  let h = '<div class="card"><h2>Signatures</h2><p class="hint">Faites signer au doigt. Le PDF sera généré avec les signatures, les noms et la date du jour.</p>';
+  let h = '<div class="card"><h2>Signatures</h2><p class="hint">Faites signer au doigt. Le PDF sera refait avec les signatures, les noms et la date du jour.</p>';
   if(dossier.docs.fiche){
     h += '<div class="sig-zone"><h3>Fiches de 1ère intervention</h3><p class="hint">'+esc(CONFIG.textes.attestation)+'</p>';
     dossier.sousTraitants.forEach((st,i)=>{
@@ -54,7 +56,7 @@ function renderSignatures(){
     });
     h += '<button class="btn secondary" onclick="addPart()">Ajouter un participant</button></div>';
   }
-  h += '<div class="row-actions" style="margin-top:20px;"><button class="btn secondary" onclick="stopSigning()">← Retour</button><button class="btn" onclick="finishSigning()">Générer le PDF signé</button></div></div>';
+  h += '<div class="row-actions" style="margin-top:20px;"><button class="btn secondary" onclick="stopSigning()">← Retour</button><button class="btn" onclick="finishSigning()">Valider les signatures</button></div></div>';
   return h;
 }
 function initSignatures(){

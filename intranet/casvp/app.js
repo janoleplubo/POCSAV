@@ -193,7 +193,9 @@ function goStep(key){
     if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ if(!st.preview) st.preview = computePreview(st); });
     ensureThemes();
   }
-  currentStep = key; genMessage=null; window.scrollTo(0,0); render();
+  currentStep = key; genMessage=null; window.scrollTo(0,0);
+  if(key==="pdf"){ generatePdf(false); return; }  /* le PDF se fabrique tout seul en arrivant à la dernière étape */
+  render();
 }
 function computePreview(st){
   const metiers = CONFIG.corpsDeMetier.filter(m => st.metiers.includes(m.id));
@@ -631,29 +633,19 @@ function renderStep3(){
 }
 function renderStep4(){
   if(signMode) return renderSignatures();
-  let h = '<div class="card"><h2>Génération du PDF</h2>';
-  const parts = [];
-  if(dossier.docs.fiche) parts.push(dossier.sousTraitants.length+" fiche(s) de 1ère intervention");
-  if(dossier.docs.quartHeure) parts.push("le 1/4h sécurité (avec émargement)");
-  if(dossier.docs.urgence) parts.push("la fiche d'urgence");
-  if(dossier.docs.affichages){
-    const nz = Math.max(0, parseInt(dossier.nbZones)||0);
-    parts.push("les affichages (base vie, stockage"+(nz>0?", + "+nz+" zone(s) interdit/EPI":"")+")");
-  }
-  h += '<p class="hint">Le PDF contiendra : '+parts.join(" + ")+'. Il sera prêt à imprimer.</p>';
-  if(genMessage){
-    h += '<div class="'+(genMessage.type==="error"?"err-banner":"success-banner")+'">'+esc(genMessage.text)+'</div>';
-  }
+  let h = '<div class="card"><h2>Votre PDF</h2>';
+  if(genMessage && genMessage.type==="error") h += '<div class="err-banner">'+esc(genMessage.text)+'</div>';
   if(pdfReady && lastPdfBlob){
+    h += '<div class="success-banner">'+esc(lastPdfFilename)+(pdfWithSigs?'<br>Avec signatures':'')+'</div>';
     h += '<button class="btn" style="width:100%;margin:6px 0 10px;" onclick="sharePdf()">✉ Partager par mail</button>';
-    h += '<button class="btn secondary" style="width:100%;" onclick="dlPdf()">⬇ Télécharger le PDF</button>';
-    h += '<p class="small-note">« Partager » ouvre le menu du téléphone : choisissez votre messagerie ou Drive, le PDF part en pièce jointe avec son nom.</p>';
+    h += '<button class="btn secondary" style="width:100%;margin-bottom:10px;" onclick="dlPdf()">⬇ Télécharger</button>';
+    h += '<button class="btn secondary" style="width:100%;" onclick="startSigning()">✍ '+(pdfWithSigs?'Modifier les signatures':'Ajouter les signatures')+'</button>';
+    if(pdfWithSigs) h += '<button class="btn ghost" style="width:100%;margin-top:6px;" onclick="generatePdf(false)">Retirer les signatures</button>';
     h += '<div id="pvfinal" class="pv" style="margin-top:12px;"></div>';
-    h += '<details style="margin-top:12px;"><summary>Refaire le PDF</summary><div class="gen-choice" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><button class="btn secondary" onclick="generatePdf()">⚙ PDF seul (à imprimer)</button><button class="btn secondary" onclick="startSigning()">✍ PDF avec signatures</button></div></details>';
-  } else {
-    h += '<div class="gen-choice" style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn" onclick="generatePdf()">⚙ PDF seul (à imprimer)</button><button class="btn secondary" onclick="startSigning()">✍ PDF avec signatures</button></div>';
+  } else if(!genMessage){
+    h += '<p class="hint">Création du PDF…</p>';
   }
-  h += '<div class="row-actions" style="margin-top:20px;"><button class="btn secondary" onclick="goPrev()">← Retour modifier</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div>';
+  h += '<div class="row-actions" style="margin-top:20px;"><button class="btn secondary" onclick="goPrev()">← Retour</button><button class="btn secondary" onclick="newDossier()">Nouveau dossier</button></div>';
   h += '</div>';
   return h;
 }
