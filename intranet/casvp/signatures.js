@@ -11,7 +11,7 @@ function startSigning(){
   const pres = (qh.presentateur || dossier.cdtNom || "").trim();
   if(!qh.participants.length){
     /* 1re ligne : le présentateur (nom déjà saisi, modifiable), puis un participant par ouvrier déclaré */
-    qh.participants.push({nom:"", entreprise:"Paris Ouest Construction", sig:null, pres:true});
+    qh.participants.push({nom:"", entreprise:"", sig:null, pres:true});
     if(dossier.docs.fiche) dossier.sousTraitants.forEach(st=>{ const n=Math.min(30, parseInt(st.nbOuvriers)||0); for(let i=0;i<n;i++) qh.participants.push({nom:"", entreprise:st.entreprise||"", sig:null}); });
   }
   if(generatePdf(false, true) === false){ render(); return; }  /* aperçu des documents à signer, sans signatures */
